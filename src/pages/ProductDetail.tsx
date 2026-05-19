@@ -47,8 +47,8 @@ const ProductDetail = () => {
     return (
       <>
         <Header />
-        <main className="flex-1 py-10">
-          <div className="max-w-6xl mx-auto px-6">
+        <main className="flex-1 py-6 sm:py-8 md:py-10">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
             <Loading message="Loading product..." />
           </div>
         </main>
@@ -61,10 +61,10 @@ const ProductDetail = () => {
     return (
       <>
         <Header />
-        <main className="flex-1 py-10">
-          <div className="max-w-6xl mx-auto px-6 text-center py-20">
-            <p className="text-5xl mb-4">🎁</p>
-            <p className="text-gray-500 mb-6">Product not found</p>
+        <main className="flex-1 py-6 sm:py-8 md:py-10">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 text-center py-10 sm:py-16 md:py-20">
+            <p className="text-4xl sm:text-5xl mb-3 sm:mb-4">🎁</p>
+            <p className="text-gray-500 mb-4 sm:mb-6 text-sm sm:text-base">Product not found</p>
             <Link to="/" className="btn btn-primary">
               <i className="fas fa-arrow-left" /> Back to Shop
             </Link>
@@ -78,45 +78,45 @@ const ProductDetail = () => {
   return (
     <>
       <Header />
-      <main className="flex-1 py-10">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
+      <main className="flex-1 py-4 sm:py-6 md:py-8 lg:py-10">
+        <div className="max-w-7xl 2xl:max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 md:gap-10 lg:gap-12 xl:gap-16 items-start">
             {/* Product Image */}
-            <div className="sticky top-24">
+            <div className="md:sticky md:top-24">
               <img
                 src={product.image_url}
                 alt={product.name}
-                className="w-full aspect-square object-cover rounded-3xl shadow-xl"
+                className="w-full aspect-square object-cover rounded-2xl sm:rounded-3xl shadow-lg sm:shadow-xl"
               />
             </div>
 
             {/* Product Info */}
-            <div className="py-5">
+            <div className="py-2 sm:py-3 md:py-5">
               <Link
                 to="/"
-                className="inline-flex items-center gap-2 text-[var(--accent-light)] text-sm mb-6 hover:text-[var(--accent)] transition-colors no-underline"
+                className="inline-flex items-center gap-1.5 sm:gap-2 text-[var(--accent-light)] text-xs sm:text-sm mb-4 sm:mb-6 hover:text-[var(--accent)] transition-colors no-underline"
               >
                 <i className="fas fa-arrow-left" /> Back to catalogue
               </Link>
 
-              <h1 className="font-display text-4xl font-semibold text-[var(--charcoal)] mb-5 leading-tight">
+              <h1 className="font-display text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-semibold text-[var(--charcoal)] mb-3 sm:mb-4 md:mb-5 leading-tight">
                 {product.name}
               </h1>
 
-              <p className="text-lg text-gray-500 leading-relaxed mb-8">
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-500 leading-relaxed mb-5 sm:mb-6 md:mb-8">
                 {product.description}
               </p>
 
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
                 <a
                   href={`https://wa.me/?text=${whatsappMessage}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn-whatsapp"
+                  className="btn btn-whatsapp justify-center"
                 >
                   <i className="fab fa-whatsapp" /> Enquire on WhatsApp
                 </a>
-                <button onClick={copyLink} className="btn btn-secondary">
+                <button onClick={copyLink} className="btn btn-secondary justify-center">
                   <i className={`fas fa-${copied ? 'check' : 'link'}`} />
                   {copied ? 'Copied!' : 'Copy Link'}
                 </button>

@@ -5,6 +5,8 @@ export interface Product {
   image_url: string;
   costPrice: number;
   sellingPrice: number;
+  quantity?: number;
+  tags?: string[];
 }
 
 export interface AdminCredentials {

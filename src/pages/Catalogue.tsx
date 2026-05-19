@@ -60,8 +60,8 @@ const Catalogue = () => {
   return (
     <>
       <Header />
-      <main className="flex-1 py-10">
-        <div className="max-w-6xl mx-auto px-6">
+      <main className="flex-1 py-4 sm:py-6 md:py-8 lg:py-10 xl:py-12">
+        <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10">
           <SearchBar 
             value={searchTerm} 
             onChange={setSearchTerm}
@@ -73,16 +73,21 @@ const Catalogue = () => {
           {loading ? (
             <Loading />
           ) : filteredProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <img src={emptyPage} alt="No products found" className="w-40 h-40 object-contain mb-6 opacity-80" />
-              <p className="text-gray-500">No products found.</p>
+            <div className="flex flex-col items-center justify-center py-10 sm:py-12 md:py-16">
+              <img src={emptyPage} alt="No products found" className="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 object-contain mb-4 sm:mb-6 opacity-80" />
+              <p className="text-gray-500 text-sm sm:text-base">No products found.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
+            <>
+            <h2 className="font-display text-lg sm:text-xl md:text-2xl font-semibold text-[var(--charcoal)] mb-4 sm:mb-5 md:mb-6">
+              Featured Gifts
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-4 md:gap-5 lg:gap-6 xl:gap-7">
               {filteredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
+            </>
           )}
         </div>
       </main>

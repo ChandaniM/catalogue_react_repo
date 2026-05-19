@@ -10,9 +10,13 @@ CREATE TABLE IF NOT EXISTS products (
   cost_price NUMERIC(10,2) NOT NULL DEFAULT 0,
   selling_price NUMERIC(10,2) NOT NULL DEFAULT 0,
   quantity INTEGER NOT NULL DEFAULT 1,
+  tags TEXT[] DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- If you already have the table, add the tags column with:
+-- ALTER TABLE products ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';
 
 -- Create index for faster queries
 CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC);

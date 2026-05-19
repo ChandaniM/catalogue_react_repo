@@ -12,7 +12,7 @@
 }
 
 // Font imports
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
 
 // Base styles
 body {
@@ -47,15 +47,26 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 14px 28px;
-  font-size: 14px;
+  gap: 8px;
+  padding: 12px 20px;
+  font-size: 13px;
   font-weight: 500;
   border-radius: 50px;
   border: none;
   transition: all 0.3s ease;
   cursor: pointer;
   text-decoration: none;
+
+  @media (min-width: 640px) {
+    gap: 10px;
+    padding: 14px 28px;
+    font-size: 14px;
+  }
+
+  @media (min-width: 1536px) {
+    padding: 16px 32px;
+    font-size: 15px;
+  }
   
   &-primary {
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
@@ -119,6 +130,20 @@ body {
   }
 }
 
+// Slide up animation for mobile overlay
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
 .product-card {
   animation: fadeInUp 0.5s ease-out both;
   
@@ -135,13 +160,19 @@ body {
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  margin: 0 auto 20px;
+  margin: 0 auto 16px;
   border: 3px solid var(--blush);
   border-top-color: var(--primary);
   animation: spin 1s ease-in-out infinite;
+
+  @media (min-width: 640px) {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 20px;
+  }
 }
 
 // Custom scrollbar
@@ -166,13 +197,19 @@ body {
 // Form inputs
 .form-input {
   width: 100%;
-  padding: 16px 20px;
-  font-size: 15px;
+  padding: 14px 16px;
+  font-size: 14px;
   border: 2px solid #e5e7eb;
-  border-radius: 16px;
+  border-radius: 12px;
   outline: none;
   transition: all 0.3s ease;
   background: #fafafa;
+
+  @media (min-width: 640px) {
+    padding: 16px 20px;
+    font-size: 15px;
+    border-radius: 16px;
+  }
   
   &:focus {
     border-color: var(--primary);
