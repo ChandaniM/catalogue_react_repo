@@ -68,9 +68,18 @@ CREATE TABLE IF NOT EXISTS admin_users (
 -- Enable Row Level Security
 ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 
--- Allow reading for login verification
-CREATE POLICY "Allow read for auth" ON admin_users
-  FOR SELECT USING (true);
+-- NO public read policy! Use RPC function instead for security.
+
+-- Secure RPC function for admin login (password stays hidden)
+CREATE OR REPLACE FUNCTION verify_admin_login(input_email TEXT, input_password TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM admin_users 
+    WHERE email = input_email AND password = input_password
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Done! Admin users table is ready.
 -- Add admin user manually in Supabase Table Editor
