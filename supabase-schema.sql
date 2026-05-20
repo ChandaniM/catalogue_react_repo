@@ -70,16 +70,21 @@ ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 
 -- NO public read policy! Use RPC function instead for security.
 
--- Secure RPC function for admin login (password stays hidden)
+-- Enable crypto extension for password hashing
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Secure RPC function for admin login (bcrypt comparison)
 CREATE OR REPLACE FUNCTION verify_admin_login(input_email TEXT, input_password TEXT)
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM admin_users 
-    WHERE email = input_email AND password = input_password
+    WHERE email = input_email 
+    AND password = crypt(input_password, password)
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Done! Admin users table is ready.
--- Add admin user manually in Supabase Table Editor
+-- Add admin user: INSERT INTO admin_users (email, password) 
+-- VALUES ('admin@uphargifts.com', crypt('YourPassword', gen_salt('bf')));
