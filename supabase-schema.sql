@@ -52,13 +52,25 @@ CREATE TRIGGER update_products_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- Insert some sample data (optional - remove if you don't want dummy data)
-INSERT INTO products (name, description, image_url, cost_price, selling_price, quantity) VALUES
-  ('Handcrafted Candle Set', 'Set of 3 premium soy candles with calming lavender, vanilla, and rose scents. Perfect for cozy evenings.', 'https://images.unsplash.com/photo-1602028915047-37269d1a73f7?w=400&h=400&fit=crop', 450, 699, 15),
-  ('Personalized Photo Frame', 'Elegant wooden frame with custom engraving. A timeless gift to cherish memories forever.', 'https://images.unsplash.com/photo-1513519245088-0e12902e35a6?w=400&h=400&fit=crop', 320, 549, 25),
-  ('Luxury Gift Hamper', 'Curated collection of gourmet chocolates, artisan cookies, and premium tea in a beautiful basket.', 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400&h=400&fit=crop', 850, 1299, 8),
-  ('Crystal Jewelry Box', 'Stunning vintage-style jewelry box with velvet interior. Perfect for storing precious accessories.', 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=400&h=400&fit=crop', 580, 899, 12),
-  ('Succulent Plant Set', 'Beautiful mini succulents in decorative ceramic pots. Low maintenance, perfect for home or office.', 'https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=400&h=400&fit=crop', 280, 449, 30),
-  ('Silk Scarf Collection', 'Luxurious hand-painted silk scarves with unique floral patterns. A statement accessory.', 'https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=400&h=400&fit=crop', 720, 1099, 18);
-
 -- Done! Your products table is ready.
+-- ============================================
+-- ADMIN USERS TABLE
+-- ============================================
+
+-- Create admin_users table for authentication
+CREATE TABLE IF NOT EXISTS admin_users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable Row Level Security
+ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
+
+-- Allow reading for login verification
+CREATE POLICY "Allow read for auth" ON admin_users
+  FOR SELECT USING (true);
+
+-- Done! Admin users table is ready.
+-- Add admin user manually in Supabase Table Editor

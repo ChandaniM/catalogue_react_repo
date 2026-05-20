@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Product } from '../types';
 import { fetchProducts, addProduct, updateProduct, deleteProduct, fetchTags, addTag, deleteTag } from '../lib/products';
 import { uploadImage } from '../lib/cloudinary';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import Loading from '../components/Loading';
 import {
   LogIn,
@@ -113,13 +114,32 @@ const Admin = () => {
     e.preventDefault();
     setError('');
 
-    // Demo credentials - in production, verify with backend
-    if (email === 'admin123@gmail.com' && password === 'admin@123') {
+    // Verify credentials against Supabase admin_users table
+    if (isSupabaseConfigured() && supabase) {
+      const { data, error: authError } = await supabase
+        .from('admin_users')
+        .select('*')
+        .eq('email', email)
+        .eq('password', password)
+        .single();
+
+      if (authError || !data) {
+        setError('Invalid credentials');
+        return;
+      }
+
       sessionStorage.setItem('adminAuth', 'true');
       setIsAuthenticated(true);
       loadProducts();
     } else {
-      setError('Invalid credentials');
+      // Fallback for local development without Supabase
+      if (email === 'admin@uphargifts.com' && password === 'Uphar@2026') {
+        sessionStorage.setItem('adminAuth', 'true');
+        setIsAuthenticated(true);
+        loadProducts();
+      } else {
+        setError('Invalid credentials');
+      }
     }
   };
 
