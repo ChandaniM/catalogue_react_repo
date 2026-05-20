@@ -3,10 +3,9 @@ import logo from '../assets/logo.svg';
 
 interface HeaderProps {
   showAdminLink?: boolean;
-  isAdmin?: boolean;
 }
 
-const Header = ({ showAdminLink = false, isAdmin = false }: HeaderProps) => {
+const Header = ({ showAdminLink = false }: HeaderProps) => {
   return (
     <header className="sticky top-0 z-50 py-2 sm:py-3 md:py-4 lg:py-5" style={{ background: 'linear-gradient(135deg, #7a4d6a 0%, #9c6b8a 100%)' }}>
       <div className="max-w-7xl 2xl:max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 flex flex-col items-center">

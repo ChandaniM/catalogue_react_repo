@@ -581,7 +581,7 @@ const Admin = () => {
                     <ShoppingBag size={16} className="text-[var(--primary)]" />
                     <span className="text-xs text-gray-500">Total Items</span>
                   </div>
-                  <p className="text-2xl font-bold text-[var(--primary)]">{products.reduce((sum, p) => sum + p.quantity, 0)}</p>
+                  <p className="text-2xl font-bold text-[var(--primary)]">{products.reduce((sum, p) => sum + (p.quantity || 0), 0)}</p>
                   <p className="text-[10px] text-gray-400 mt-1">All products combined</p>
                 </div>
                 <div className="bg-gradient-to-br from-amber-50 to-white p-4 rounded-xl border border-amber-100">
@@ -589,7 +589,7 @@ const Admin = () => {
                     <span className="text-amber-600 font-medium">₹</span>
                     <span className="text-xs text-gray-500">You Paid</span>
                   </div>
-                  <p className="text-2xl font-bold text-amber-600">₹{products.reduce((sum, p) => sum + (p.costPrice * p.quantity), 0).toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-amber-600">₹{products.reduce((sum, p) => sum + (p.costPrice * (p.quantity || 0)), 0).toLocaleString()}</p>
                   <p className="text-[10px] text-gray-400 mt-1">Total buying cost</p>
                 </div>
                 <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-100">
@@ -597,7 +597,7 @@ const Admin = () => {
                     <TrendingUp size={16} className="text-blue-600" />
                     <span className="text-xs text-gray-500">You'll Get</span>
                   </div>
-                  <p className="text-2xl font-bold text-blue-600">₹{products.reduce((sum, p) => sum + (p.sellingPrice * p.quantity), 0).toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-blue-600">₹{products.reduce((sum, p) => sum + (p.sellingPrice * (p.quantity || 0)), 0).toLocaleString()}</p>
                   <p className="text-[10px] text-gray-400 mt-1">If you sell everything</p>
                 </div>
                 <div className="bg-gradient-to-br from-green-50 to-white p-4 rounded-xl border border-green-100">
@@ -605,7 +605,7 @@ const Admin = () => {
                     <TrendingUp size={16} className="text-green-600" />
                     <span className="text-xs text-gray-500">Your Profit</span>
                   </div>
-                  <p className="text-2xl font-bold text-green-600">₹{products.reduce((sum, p) => sum + ((p.sellingPrice - p.costPrice) * p.quantity), 0).toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-green-600">₹{products.reduce((sum, p) => sum + ((p.sellingPrice - p.costPrice) * (p.quantity || 0)), 0).toLocaleString()}</p>
                   <p className="text-[10px] text-gray-400 mt-1">Money you earn</p>
                 </div>
               </div>
@@ -655,8 +655,8 @@ const Admin = () => {
                     <tbody className="divide-y divide-gray-50">
                       {products.map((product) => {
                         const profitPerUnit = product.sellingPrice - product.costPrice;
-                        const totalInvestment = product.costPrice * product.quantity;
-                        const totalProfit = profitPerUnit * product.quantity;
+                        const totalInvestment = product.costPrice * (product.quantity || 0);
+                        const totalProfit = profitPerUnit * (product.quantity || 0);
                         return (
                           <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
                             <td className="py-3 px-4">
