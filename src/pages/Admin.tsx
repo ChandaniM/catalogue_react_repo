@@ -114,14 +114,13 @@ const Admin = () => {
     e.preventDefault();
     setError('');
 
-    // Verify credentials against Supabase admin_users table
+    // Verify credentials using secure RPC function
     if (isSupabaseConfigured() && supabase) {
       const { data, error: authError } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', email)
-        .eq('password', password)
-        .single();
+        .rpc('verify_admin_login', {
+          input_email: email,
+          input_password: password
+        });
 
       if (authError || !data) {
         setError('Invalid credentials');
@@ -133,13 +132,7 @@ const Admin = () => {
       loadProducts();
     } else {
       // Fallback for local development without Supabase
-      if (email === 'admin@uphargifts.com' && password === 'Uphar@2026') {
-        sessionStorage.setItem('adminAuth', 'true');
-        setIsAuthenticated(true);
-        loadProducts();
-      } else {
-        setError('Invalid credentials');
-      }
+      setError('Supabase not configured');
     }
   };
 
