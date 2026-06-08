@@ -2,27 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import type { Product, Category } from '../types';
 import { fetchProducts, addProduct, updateProduct, deleteProduct, fetchTags, addTag, deleteTag } from '../lib/products';
-import { fetchCategories, addCategory, updateCategory, deleteCategory } from '../services/categories';
+import { fetchCategories, addCategory, updateCategory, deleteCategory, slugify } from '../services/categories';
 import { uploadImage } from '../lib/cloudinary';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import Loading from '../components/Loading';
 import {
-  LogIn,
-  Store,
-  PlusCircle,
-  Package,
-  Gift,
-  Trash2,
-  Loader2,
-  ImagePlus,
-  Pencil,
-  X,
-  Tag,
-  Plus,
-  Lightbulb,
-  FolderPlus,
-  Folder,
-  LayoutGrid,
+  LogIn, Store, PlusCircle, Package, Gift, Trash2, Loader2, ImagePlus,
+  Pencil, X, Tag, Plus, Lightbulb, FolderPlus, Folder, LayoutGrid,
 } from 'lucide-react';
 
 const Admin = () => {
@@ -49,6 +35,8 @@ const Admin = () => {
   const [categoryCreating, setCategoryCreating] = useState(false);
 
   const [categoryName, setCategoryName] = useState('');
+  const [categorySlug, setCategorySlug] = useState('');
+  const [categoryIsActive, setCategoryIsActive] = useState(true);
   const [categoryCoverImage, setCategoryCoverImage] = useState<File | null>(null);
   const [categoryCoverPreview, setCategoryCoverPreview] = useState('');
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -75,9 +63,7 @@ const Admin = () => {
     setLoading(true);
     try {
       const [productsData, tagsData, categoriesData] = await Promise.all([
-        fetchProducts(),
-        fetchTags(),
-        fetchCategories(),
+        fetchProducts(), fetchTags(), fetchCategories(),
       ]);
       setProducts(productsData);
       setTags(tagsData);
@@ -94,7 +80,7 @@ const Admin = () => {
     if (!name) return;
     setCategoryCreating(true);
     try {
-      const newCategory = await addCategory(name);
+      const newCategory = await addCategory({ name });
       if (newCategory) {
         setCategories((prev) => [...prev, newCategory]);
         setSelectedCategoryId(newCategory.id);
@@ -120,6 +106,8 @@ const Admin = () => {
 
   const resetCategoryForm = () => {
     setCategoryName('');
+    setCategorySlug('');
+    setCategoryIsActive(true);
     setCategoryCoverImage(null);
     setCategoryCoverPreview('');
     setEditingCategoryId(null);
@@ -133,21 +121,23 @@ const Admin = () => {
     setUploading(true);
     try {
       let coverUrl = categoryCoverPreview;
-      if (categoryCoverImage) {
-        coverUrl = await uploadImage(categoryCoverImage);
-      }
+      if (categoryCoverImage) coverUrl = await uploadImage(categoryCoverImage);
+
+      const payload = {
+        name: categoryName.trim(),
+        slug: categorySlug.trim() || slugify(categoryName),
+        coverImage: coverUrl || undefined,
+        isActive: categoryIsActive,
+      };
 
       if (editingCategoryId) {
-        const updated = await updateCategory(editingCategoryId, {
-          name: categoryName.trim(),
-          coverImage: coverUrl || undefined,
-        });
+        const updated = await updateCategory(editingCategoryId, payload);
         if (updated) {
           setCategories((prev) => prev.map((c) => (c.id === editingCategoryId ? updated : c)));
           setMessage({ type: 'success', text: 'Category updated successfully!' });
         }
       } else {
-        const created = await addCategory(categoryName.trim(), coverUrl || undefined);
+        const created = await addCategory(payload);
         if (created) {
           setCategories((prev) => [...prev, created]);
           setMessage({ type: 'success', text: 'Category created successfully!' });
@@ -165,6 +155,8 @@ const Admin = () => {
   const handleEditCategory = (category: Category) => {
     setEditingCategoryId(category.id);
     setCategoryName(category.name);
+    setCategorySlug(category.slug);
+    setCategoryIsActive(category.isActive);
     setCategoryCoverPreview(category.coverImage || '');
     setCategoryCoverImage(null);
     setMessage({ type: '', text: '' });
@@ -172,11 +164,7 @@ const Admin = () => {
 
   const handleDeleteCategory = async (id: string) => {
     const productCount = products.filter((p) => p.categoryId === id).length;
-    const confirmMsg = productCount > 0
-      ? `Delete this category? ${productCount} product(s) will lose their category assignment.`
-      : 'Delete this category?';
-
-    if (!confirm(confirmMsg)) return;
+    if (!confirm(`Delete this category? ${productCount} product(s) will be affected.`)) return;
 
     const success = await deleteCategory(id);
     if (success) {
@@ -190,10 +178,7 @@ const Admin = () => {
     const tagName = newTagInput.trim();
     if (!tagName || tags.includes(tagName)) return;
     const success = await addTag(tagName);
-    if (success) {
-      setTags([...tags, tagName]);
-      setNewTagInput('');
-    }
+    if (success) { setTags([...tags, tagName]); setNewTagInput(''); }
   };
 
   const handleDeleteTag = async (tagName: string) => {
@@ -207,9 +192,7 @@ const Admin = () => {
   };
 
   const toggleProductTag = (tagName: string) => {
-    setProductTags((prev) =>
-      prev.includes(tagName) ? prev.filter((t) => t !== tagName) : [...prev, tagName]
-    );
+    setProductTags((prev) => prev.includes(tagName) ? prev.filter((t) => t !== tagName) : [...prev, tagName]);
   };
 
   const hashPassword = async (pwd: string): Promise<string> => {
@@ -225,13 +208,9 @@ const Admin = () => {
     if (isSupabaseConfigured() && supabase) {
       const hashedPassword = await hashPassword(password);
       const { data, error: authError } = await supabase.rpc('verify_admin_login', {
-        input_email: email,
-        input_password: hashedPassword,
+        input_email: email, input_password: hashedPassword,
       });
-      if (authError || !data) {
-        setError('Invalid credentials');
-        return;
-      }
+      if (authError || !data) { setError('Invalid credentials'); return; }
       sessionStorage.setItem('adminAuth', 'true');
       setIsAuthenticated(true);
       loadData();
@@ -268,12 +247,9 @@ const Admin = () => {
     }
 
     setUploading(true);
-
     try {
       let finalImageUrl = imagePreview;
-      if (productImage) {
-        finalImageUrl = await uploadImage(productImage);
-      }
+      if (productImage) finalImageUrl = await uploadImage(productImage);
 
       const baseProductData = {
         name: productName,
@@ -287,7 +263,6 @@ const Admin = () => {
       };
 
       let savedProduct: Product | null = null;
-
       if (editingId) {
         savedProduct = await updateProduct(editingId, baseProductData);
         if (savedProduct) {
@@ -307,21 +282,13 @@ const Admin = () => {
         const targetedCategory = categories.find((c) => c.id === selectedCategoryId);
         if (targetedCategory && !targetedCategory.coverImage) {
           const updated = await updateCategory(selectedCategoryId, { coverImage: finalImageUrl });
-          if (updated) {
-            setCategories((prev) => prev.map((c) => (c.id === selectedCategoryId ? updated : c)));
-          }
+          if (updated) setCategories((prev) => prev.map((c) => (c.id === selectedCategoryId ? updated : c)));
         }
       }
 
-      setProductName('');
-      setProductDescription('');
-      setProductCostPrice('');
-      setProductSellingPrice('');
-      setProductQuantity('');
-      setSelectedCategoryId('');
-      setProductImage(null);
-      setImagePreview('');
-      setProductTags([]);
+      setProductName(''); setProductDescription(''); setProductCostPrice('');
+      setProductSellingPrice(''); setProductQuantity('');
+      setSelectedCategoryId(''); setProductImage(null); setImagePreview(''); setProductTags([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       console.error(err);
@@ -348,15 +315,9 @@ const Admin = () => {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setProductName('');
-    setProductDescription('');
-    setProductCostPrice('');
-    setProductSellingPrice('');
-    setProductQuantity('');
-    setSelectedCategoryId('');
-    setProductImage(null);
-    setImagePreview('');
-    setProductTags([]);
+    setProductName(''); setProductDescription(''); setProductCostPrice('');
+    setProductSellingPrice(''); setProductQuantity('');
+    setSelectedCategoryId(''); setProductImage(null); setImagePreview(''); setProductTags([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setMessage({ type: '', text: '' });
   };
@@ -401,7 +362,6 @@ const Admin = () => {
       <main className="flex-1 py-12 bg-gray-50/50">
         <div className="max-w-6xl mx-auto px-6 space-y-10">
 
-          {/* Category Management */}
           <section className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
             <div className="mb-6 pb-5 border-b border-gray-100">
               <h2 className="font-display text-xl font-semibold text-[var(--charcoal)] flex items-center gap-3">
@@ -426,29 +386,25 @@ const Admin = () => {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Category Name</label>
-                  <input
-                    type="text"
-                    value={categoryName}
-                    onChange={(e) => setCategoryName(e.target.value)}
-                    placeholder="e.g., Keychains"
-                    className="form-input bg-white"
-                    required
-                  />
+                  <input type="text" value={categoryName} onChange={(e) => { setCategoryName(e.target.value); if (!editingCategoryId) setCategorySlug(slugify(e.target.value)); }} placeholder="e.g., Keychain" className="form-input bg-white" required />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Slug</label>
+                  <input type="text" value={categorySlug} onChange={(e) => setCategorySlug(e.target.value)} placeholder="e.g., keychain" className="form-input bg-white" required />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Cover Image</label>
-                  <div
-                    className="file-upload border-2 border-dashed border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:border-[var(--primary)] transition-colors"
-                    onClick={() => categoryCoverInputRef.current?.click()}
-                  >
+                  <div className="file-upload border-2 border-dashed border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:border-[var(--primary)] transition-colors" onClick={() => categoryCoverInputRef.current?.click()}>
                     <input type="file" ref={categoryCoverInputRef} onChange={handleCategoryCoverChange} accept="image/*" className="hidden" />
                     <span className="text-xs text-gray-500">Click to upload cover image</span>
                   </div>
                 </div>
+                <div className="flex items-center gap-2 pt-5">
+                  <input type="checkbox" id="categoryActive" checked={categoryIsActive} onChange={(e) => setCategoryIsActive(e.target.checked)} className="rounded" />
+                  <label htmlFor="categoryActive" className="text-sm text-gray-600">Active (visible on storefront)</label>
+                </div>
               </div>
-              {categoryCoverPreview && (
-                <img src={categoryCoverPreview} alt="Category cover preview" className="max-w-[120px] max-h-[80px] rounded-lg object-cover" />
-              )}
+              {categoryCoverPreview && <img src={categoryCoverPreview} alt="Preview" className="max-w-[120px] max-h-[80px] rounded-lg object-cover" />}
               <button type="submit" disabled={uploading} className="btn btn-primary text-sm gap-2">
                 {uploading ? <Loader2 size={16} className="animate-spin" /> : editingCategoryId ? <Pencil size={16} /> : <FolderPlus size={16} />}
                 {editingCategoryId ? 'Update Category' : 'Create Category'}
@@ -456,41 +412,29 @@ const Admin = () => {
             </form>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {categories.map((category) => {
-                const count = products.filter((p) => p.categoryId === category.id).length;
-                return (
-                  <div key={category.id} className="relative group rounded-2xl border border-gray-100 overflow-hidden bg-gray-50">
-                    <div className="aspect-square bg-gray-200">
-                      {category.coverImage ? (
-                        <img src={category.coverImage} alt={category.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[var(--primary)]">
-                          <Folder size={32} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <h4 className="font-medium text-sm truncate">{category.name}</h4>
-                      <p className="text-[10px] text-gray-400">{count} product{count !== 1 ? 's' : ''}</p>
-                    </div>
-                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleEditCategory(category)} className="p-1.5 rounded bg-white/90 text-amber-600 hover:bg-amber-50 shadow-sm">
-                        <Pencil size={12} />
-                      </button>
-                      <button onClick={() => handleDeleteCategory(category.id)} className="p-1.5 rounded bg-white/90 text-red-600 hover:bg-red-50 shadow-sm">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
+              {categories.map((category) => (
+                <div key={category.id} className="relative group rounded-2xl border border-gray-100 overflow-hidden bg-gray-50">
+                  <div className="aspect-square bg-gray-200">
+                    {category.coverImage ? (
+                      <img src={category.coverImage} alt={category.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[var(--primary)]"><Folder size={32} /></div>
+                    )}
                   </div>
-                );
-              })}
-              {categories.length === 0 && (
-                <p className="col-span-full text-center text-gray-400 text-sm py-8">No categories yet. Create one above.</p>
-              )}
+                  <div className="p-3">
+                    <h4 className="font-medium text-sm truncate">{category.name}</h4>
+                    <p className="text-[10px] text-gray-400">/{category.slug}</p>
+                    {!category.isActive && <span className="text-[10px] text-amber-600">Inactive</span>}
+                  </div>
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleEditCategory(category)} className="p-1.5 rounded bg-white/90 text-amber-600 hover:bg-amber-50 shadow-sm"><Pencil size={12} /></button>
+                    <button onClick={() => handleDeleteCategory(category.id)} className="p-1.5 rounded bg-white/90 text-red-600 hover:bg-red-50 shadow-sm"><Trash2 size={12} /></button>
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
 
-          {/* Product Form */}
           <section className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 max-w-2xl mx-auto">
             <div className="mb-8 pb-5 border-b border-gray-100 flex items-center justify-between">
               <h2 className="font-display text-xl font-semibold text-[var(--charcoal)] flex items-center gap-3">
@@ -499,9 +443,7 @@ const Admin = () => {
                 </span>
                 {editingId ? 'Edit Product' : 'Add New Product'}
               </h2>
-              {editingId && (
-                <button type="button" onClick={cancelEdit} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"><X size={16} /> Cancel</button>
-              )}
+              {editingId && <button type="button" onClick={cancelEdit} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"><X size={16} /> Cancel</button>}
             </div>
 
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
@@ -511,51 +453,20 @@ const Admin = () => {
                 </label>
                 {!showInlineCategoryInput ? (
                   <div className="flex gap-2">
-                    <select
-                      value={selectedCategoryId}
-                      onChange={(e) => setSelectedCategoryId(e.target.value)}
-                      className="form-input flex-1 bg-white"
-                      required
-                    >
+                    <select value={selectedCategoryId} onChange={(e) => setSelectedCategoryId(e.target.value)} className="form-input flex-1 bg-white" required>
                       <option value="">Select a category</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
+                      {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
-                    <button
-                      type="button"
-                      onClick={() => setShowInlineCategoryInput(true)}
-                      className="btn bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 px-3 flex gap-1 items-center text-xs whitespace-nowrap"
-                    >
+                    <button type="button" onClick={() => setShowInlineCategoryInput(true)} className="btn bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 px-3 flex gap-1 items-center text-xs whitespace-nowrap">
                       <FolderPlus size={16} /> New
                     </button>
                   </div>
                 ) : (
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
-                    <span className="text-[11px] text-gray-500 block font-medium">Add New Category:</span>
+                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
                     <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                        placeholder="e.g., Keychains"
-                        className="form-input flex-1 bg-white"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleCreateCategoryInline}
-                        disabled={categoryCreating || !newCategoryName.trim()}
-                        className="btn btn-primary px-3 text-xs py-2 h-auto"
-                      >
-                        {categoryCreating ? 'Saving...' : 'Save'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setShowInlineCategoryInput(false); setNewCategoryName(''); }}
-                        className="btn bg-white border border-gray-300 text-gray-600 px-2 text-xs"
-                      >
-                        Cancel
-                      </button>
+                      <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g., Keychain" className="form-input flex-1 bg-white" />
+                      <button type="button" onClick={handleCreateCategoryInline} disabled={categoryCreating || !newCategoryName.trim()} className="btn btn-primary px-3 text-xs py-2 h-auto">{categoryCreating ? 'Saving...' : 'Save'}</button>
+                      <button type="button" onClick={() => { setShowInlineCategoryInput(false); setNewCategoryName(''); }} className="btn bg-white border border-gray-300 text-gray-600 px-2 text-xs">Cancel</button>
                     </div>
                   </div>
                 )}
@@ -563,12 +474,12 @@ const Admin = () => {
 
               <div>
                 <label className="block text-sm font-medium text-[var(--accent)] mb-3">Product Name</label>
-                <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g., Handcrafted Candle Set" className="form-input" required />
+                <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g., Naruto Keychain" className="form-input" required />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-[var(--accent)] mb-3">Description</label>
-                <textarea value={productDescription} onChange={(e) => setProductDescription(e.target.value)} placeholder="Describe your product beautifully..." rows={3} className="form-input resize-y min-h-[90px]" required />
+                <textarea value={productDescription} onChange={(e) => setProductDescription(e.target.value)} placeholder="Describe your product..." rows={3} className="form-input resize-y min-h-[90px]" required />
               </div>
 
               <div className="grid grid-cols-3 gap-4">
@@ -576,19 +487,19 @@ const Admin = () => {
                   <label className="block text-sm font-medium text-[var(--accent)] mb-1">Buy Price</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
-                    <input type="number" value={productCostPrice} onChange={(e) => setProductCostPrice(e.target.value)} placeholder="100" className="form-input pl-9" min="0" required />
+                    <input type="number" value={productCostPrice} onChange={(e) => setProductCostPrice(e.target.value)} className="form-input pl-9" min="0" required />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--accent)] mb-1">Sell Price</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
-                    <input type="number" value={productSellingPrice} onChange={(e) => setProductSellingPrice(e.target.value)} placeholder="150" className="form-input pl-9" min="0" required />
+                    <input type="number" value={productSellingPrice} onChange={(e) => setProductSellingPrice(e.target.value)} className="form-input pl-9" min="0" required />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--accent)] mb-1">Quantity</label>
-                  <input type="number" value={productQuantity} onChange={(e) => setProductQuantity(e.target.value)} placeholder="300" className="form-input" min="0" required />
+                  <input type="number" value={productQuantity} onChange={(e) => setProductQuantity(e.target.value)} className="form-input" min="0" required />
                 </div>
               </div>
 
@@ -605,10 +516,7 @@ const Admin = () => {
 
               <div>
                 <label className="block text-sm font-medium text-[var(--accent)] mb-3">Product Image</label>
-                <div
-                  className="file-upload group border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center cursor-pointer hover:border-[var(--primary)] transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
+                <div className="file-upload border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center cursor-pointer hover:border-[var(--primary)] transition-colors" onClick={() => fileInputRef.current?.click()}>
                   <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
                   <div className="w-12 h-12 rounded-xl bg-[var(--primary-light)] flex items-center justify-center mb-2 mx-auto"><ImagePlus size={22} className="text-[var(--primary)]" /></div>
                   <span className="text-xs text-gray-500 font-medium block">Click to choose image file</span>
@@ -618,14 +526,13 @@ const Admin = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-[var(--accent)]">Category Tags</label>
+                  <label className="block text-sm font-medium text-[var(--accent)]">Product Tags</label>
                   <button type="button" onClick={() => setShowTagModal(true)} className="text-xs text-[var(--primary)] font-medium flex items-center gap-1"><Tag size={14} /> Manage Tags</button>
                 </div>
+                <p className="text-[11px] text-gray-400 mb-2">Tags power filtering on category pages (e.g., Anime, Metal, Custom).</p>
                 <div className="flex flex-wrap gap-2">
                   {tags.map((tag) => (
-                    <button key={tag} type="button" onClick={() => toggleProductTag(tag)} className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${productTags.includes(tag) ? 'bg-[var(--primary)] text-white' : 'bg-gray-100 text-gray-600'}`}>
-                      {tag}
-                    </button>
+                    <button key={tag} type="button" onClick={() => toggleProductTag(tag)} className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${productTags.includes(tag) ? 'bg-[var(--primary)] text-white' : 'bg-gray-100 text-gray-600'}`}>{tag}</button>
                   ))}
                 </div>
               </div>
@@ -634,14 +541,10 @@ const Admin = () => {
                 {uploading ? <Loader2 size={18} className="animate-spin" /> : editingId ? <Pencil size={18} /> : <Gift size={18} />}
                 {editingId ? 'Update Product Details' : 'Publish Product to Catalogue'}
               </button>
-
-              {message.text && (
-                <p className={`p-4 text-sm rounded-xl ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{message.text}</p>
-              )}
+              {message.text && <p className={`p-4 text-sm rounded-xl ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{message.text}</p>}
             </form>
           </section>
 
-          {/* Inventory Table */}
           <section className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
             <div className="mb-6 pb-5 border-b border-gray-100">
               <h2 className="font-display text-xl font-semibold text-[var(--charcoal)] flex items-center gap-3">
@@ -649,7 +552,6 @@ const Admin = () => {
                 Stock Catalog Inventory
               </h2>
             </div>
-
             <div className="max-h-[380px] overflow-auto rounded-xl border border-gray-100">
               {loading ? (
                 <div className="py-16"><Loading message="Syncing with database..." /></div>
@@ -659,11 +561,10 @@ const Admin = () => {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 sticky top-0 text-gray-500 text-left">
                     <tr>
-                      <th className="py-3 px-4">Item Name</th>
+                      <th className="py-3 px-4">Item</th>
                       <th className="py-3 px-2">Category</th>
+                      <th className="py-3 px-2">Tags</th>
                       <th className="py-3 px-2 text-right">Stock</th>
-                      <th className="py-3 px-2 text-right">Buy</th>
-                      <th className="py-3 px-2 text-right">Sell</th>
                       <th className="py-3 px-3"></th>
                     </tr>
                   </thead>
@@ -673,17 +574,18 @@ const Admin = () => {
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
                             <img src={product.image_url} alt="" className="w-10 h-10 object-cover rounded-lg" />
-                            <span className="font-medium truncate max-w-[140px] block">{product.name}</span>
+                            <span className="font-medium truncate max-w-[120px] block">{product.name}</span>
                           </div>
                         </td>
+                        <td className="py-3 px-2 text-[10px] text-gray-500">{categories.find((c) => c.id === product.categoryId)?.name || '—'}</td>
                         <td className="py-3 px-2">
-                          <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                            {categories.find((c) => c.id === product.categoryId)?.name || '—'}
-                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {product.tags?.map((t) => (
+                              <span key={t} className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{t}</span>
+                            ))}
+                          </div>
                         </td>
                         <td className="py-3 px-2 text-right font-medium">{product.quantity ?? 0}</td>
-                        <td className="py-3 px-2 text-right text-gray-500">₹{product.costPrice}</td>
-                        <td className="py-3 px-2 text-right text-gray-700">₹{product.sellingPrice}</td>
                         <td className="py-3 px-3 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button onClick={() => handleEdit(product)} className="p-1.5 rounded bg-amber-50 text-amber-600 hover:bg-amber-100"><Pencil size={14} /></button>
@@ -708,7 +610,7 @@ const Admin = () => {
               <button onClick={() => setShowTagModal(false)}><X size={18} /></button>
             </div>
             <div className="flex gap-2 mb-4">
-              <input type="text" value={newTagInput} onChange={(e) => setNewTagInput(e.target.value)} placeholder="Tag label..." className="form-input flex-1" />
+              <input type="text" value={newTagInput} onChange={(e) => setNewTagInput(e.target.value)} placeholder="e.g., Anime, Metal..." className="form-input flex-1" />
               <button type="button" onClick={handleAddTag} className="btn btn-primary"><Plus size={16} /> Add</button>
             </div>
             <div className="max-h-48 overflow-auto space-y-1.5">

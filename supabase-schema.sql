@@ -98,9 +98,12 @@ CREATE TABLE IF NOT EXISTS categories (
   name TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
   cover_image TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
 
 CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
 
@@ -145,8 +148,8 @@ ALTER TABLE products
 CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
 
 -- Migrate existing products without a category into a default "General" category
-INSERT INTO categories (name, slug)
-SELECT 'General', 'general'
+INSERT INTO categories (name, slug, is_active)
+SELECT 'General', 'general', true
 WHERE NOT EXISTS (SELECT 1 FROM categories WHERE slug = 'general');
 
 UPDATE products

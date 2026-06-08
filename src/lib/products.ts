@@ -1,10 +1,9 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { DUMMY_PRODUCTS } from '../data/products';
-import { DUMMY_CATEGORIES } from '../data/categories';
 import type { Product } from '../types';
 
 const LOCAL_STORAGE_KEY = 'uphar_products';
-const MIGRATION_KEY = 'uphar_products_migrated_v1';
+const MIGRATION_KEY = 'uphar_products_migrated_v3';
 
 const mapFromDb = (p: Record<string, unknown>): Product => ({
   id: p.id as string,
@@ -18,14 +17,6 @@ const mapFromDb = (p: Record<string, unknown>): Product => ({
   categoryId: (p.category_id as string) || '',
 });
 
-const migrateLocalProducts = (products: Product[]): Product[] => {
-  const defaultCategoryId = DUMMY_CATEGORIES[0]?.id || 'cat-general';
-  return products.map((p) => ({
-    ...p,
-    categoryId: p.categoryId || defaultCategoryId,
-  }));
-};
-
 const getLocalProducts = (): Product[] => {
   const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
   let products: Product[];
@@ -38,10 +29,9 @@ const getLocalProducts = (): Product[] => {
   }
 
   if (!localStorage.getItem(MIGRATION_KEY)) {
-    const migrated = migrateLocalProducts(products);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(migrated));
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DUMMY_PRODUCTS));
     localStorage.setItem(MIGRATION_KEY, 'true');
-    return migrated;
+    return DUMMY_PRODUCTS;
   }
 
   return products;
@@ -67,11 +57,6 @@ export const fetchProducts = async (): Promise<Product[]> => {
   }
 
   return getLocalProducts();
-};
-
-export const fetchProductsByCategory = async (categoryId: string): Promise<Product[]> => {
-  const products = await fetchProducts();
-  return products.filter((p) => p.categoryId === categoryId);
 };
 
 export const fetchProductById = async (id: string): Promise<Product | null> => {
@@ -119,16 +104,16 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product 
   }
 
   const products = getLocalProducts();
-  const newProduct: Product = {
-    id: String(Date.now()),
-    ...product,
-  };
+  const newProduct: Product = { id: String(Date.now()), ...product };
   products.unshift(newProduct);
   saveLocalProducts(products);
   return newProduct;
 };
 
-export const updateProduct = async (id: string, updates: Partial<Omit<Product, 'id'>>): Promise<Product | null> => {
+export const updateProduct = async (
+  id: string,
+  updates: Partial<Omit<Product, 'id'>>
+): Promise<Product | null> => {
   if (isSupabaseConfigured() && supabase) {
     const supabaseUpdates: Record<string, unknown> = {};
     if (updates.name !== undefined) supabaseUpdates.name = updates.name;
@@ -166,11 +151,7 @@ export const updateProduct = async (id: string, updates: Partial<Omit<Product, '
 
 export const deleteProduct = async (id: string): Promise<boolean> => {
   if (isSupabaseConfigured() && supabase) {
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', id);
-
+    const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) {
       console.error('Error deleting product:', error);
       return false;
@@ -178,22 +159,16 @@ export const deleteProduct = async (id: string): Promise<boolean> => {
     return true;
   }
 
-  const products = getLocalProducts();
-  const filtered = products.filter((p) => p.id !== id);
-  saveLocalProducts(filtered);
+  saveLocalProducts(getLocalProducts().filter((p) => p.id !== id));
   return true;
 };
 
-// ============ TAGS ============
-
 const TAGS_STORAGE_KEY = 'uphar_tags';
-const DEFAULT_TAGS = ['Birthday', 'Anniversary', 'Self Care', 'Luxury', 'Hampers', 'Personalized'];
+const DEFAULT_TAGS = ['Anime', 'Metal', 'Acrylic', 'Custom', 'Wooden', 'LED', 'Luxury', 'Birthday', 'Anniversary'];
 
 const getLocalTags = (): string[] => {
   const stored = localStorage.getItem(TAGS_STORAGE_KEY);
-  if (stored) {
-    return JSON.parse(stored);
-  }
+  if (stored) return JSON.parse(stored);
   localStorage.setItem(TAGS_STORAGE_KEY, JSON.stringify(DEFAULT_TAGS));
   return DEFAULT_TAGS;
 };
@@ -204,35 +179,25 @@ const saveLocalTags = (tags: string[]) => {
 
 export const fetchTags = async (): Promise<string[]> => {
   if (isSupabaseConfigured() && supabase) {
-    const { data, error } = await supabase
-      .from('tags')
-      .select('name')
-      .order('name');
-
+    const { data, error } = await supabase.from('tags').select('name').order('name');
     if (error) {
       console.error('Error fetching tags:', error);
       return getLocalTags();
     }
-
     return data.map((t) => t.name);
   }
-
   return getLocalTags();
 };
 
 export const addTag = async (name: string): Promise<boolean> => {
   if (isSupabaseConfigured() && supabase) {
-    const { error } = await supabase
-      .from('tags')
-      .insert({ name });
-
+    const { error } = await supabase.from('tags').insert({ name });
     if (error) {
       console.error('Error adding tag:', error);
       return false;
     }
     return true;
   }
-
   const tags = getLocalTags();
   if (!tags.includes(name)) {
     tags.push(name);
@@ -243,20 +208,13 @@ export const addTag = async (name: string): Promise<boolean> => {
 
 export const deleteTag = async (name: string): Promise<boolean> => {
   if (isSupabaseConfigured() && supabase) {
-    const { error } = await supabase
-      .from('tags')
-      .delete()
-      .eq('name', name);
-
+    const { error } = await supabase.from('tags').delete().eq('name', name);
     if (error) {
       console.error('Error deleting tag:', error);
       return false;
     }
     return true;
   }
-
-  const tags = getLocalTags();
-  const filtered = tags.filter((t) => t !== name);
-  saveLocalTags(filtered);
+  saveLocalTags(getLocalTags().filter((t) => t !== name));
   return true;
 };

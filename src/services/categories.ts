@@ -12,13 +12,17 @@ const mapFromDb = (row: Record<string, unknown>): Category => ({
   name: row.name as string,
   slug: row.slug as string,
   coverImage: (row.cover_image as string) || undefined,
+  isActive: row.is_active !== false,
   createdAt: (row.created_at as string) || undefined,
   updatedAt: (row.updated_at as string) || undefined,
 });
 
 const getLocalCategories = (): Category[] => {
   const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-  if (stored) return JSON.parse(stored);
+  if (stored) {
+    const parsed: Category[] = JSON.parse(stored);
+    return parsed.map((c) => ({ ...c, isActive: c.isActive !== false }));
+  }
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DUMMY_CATEGORIES));
   return DUMMY_CATEGORIES;
 };
@@ -27,22 +31,25 @@ const saveLocalCategories = (categories: Category[]) => {
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(categories));
 };
 
-export const fetchCategories = async (): Promise<Category[]> => {
-  if (isSupabaseConfigured() && supabase) {
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .order('name', { ascending: true });
+export const fetchCategories = async (activeOnly = false): Promise<Category[]> => {
+  let categories: Category[];
 
+  if (isSupabaseConfigured() && supabase) {
+    let query = supabase.from('categories').select('*').order('name', { ascending: true });
+    if (activeOnly) query = query.eq('is_active', true);
+
+    const { data, error } = await query;
     if (error) {
       console.error('Error fetching categories:', error);
-      return getLocalCategories();
+      categories = getLocalCategories();
+    } else {
+      categories = data.map(mapFromDb);
     }
-
-    return data.map(mapFromDb);
+  } else {
+    categories = getLocalCategories();
   }
 
-  return getLocalCategories();
+  return activeOnly ? categories.filter((c) => c.isActive) : categories;
 };
 
 export const fetchCategoryBySlug = async (slug: string): Promise<Category | null> => {
@@ -64,16 +71,19 @@ export const fetchCategoryBySlug = async (slug: string): Promise<Category | null
   return getLocalCategories().find((c) => c.slug === slug) || null;
 };
 
-export const addCategory = async (
-  name: string,
-  coverImage?: string
-): Promise<Category | null> => {
-  const slug = slugify(name);
+export const addCategory = async (input: {
+  name: string;
+  slug?: string;
+  coverImage?: string;
+  isActive?: boolean;
+}): Promise<Category | null> => {
+  const slug = input.slug?.trim() || slugify(input.name);
+  const isActive = input.isActive !== false;
 
   if (isSupabaseConfigured() && supabase) {
     const { data, error } = await supabase
       .from('categories')
-      .insert({ name, slug, cover_image: coverImage })
+      .insert({ name: input.name, slug, cover_image: input.coverImage, is_active: isActive })
       .select()
       .single();
 
@@ -88,9 +98,10 @@ export const addCategory = async (
   const categories = getLocalCategories();
   const newCategory: Category = {
     id: String(Date.now()),
-    name,
+    name: input.name,
     slug,
-    coverImage,
+    coverImage: input.coverImage,
+    isActive,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -101,15 +112,15 @@ export const addCategory = async (
 
 export const updateCategory = async (
   id: string,
-  updates: { name?: string; coverImage?: string }
+  updates: { name?: string; slug?: string; coverImage?: string; isActive?: boolean }
 ): Promise<Category | null> => {
   if (isSupabaseConfigured() && supabase) {
     const dbUpdates: Record<string, unknown> = {};
-    if (updates.name !== undefined) {
-      dbUpdates.name = updates.name;
-      dbUpdates.slug = slugify(updates.name);
-    }
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.slug !== undefined) dbUpdates.slug = updates.slug;
+    else if (updates.name !== undefined) dbUpdates.slug = slugify(updates.name);
     if (updates.coverImage !== undefined) dbUpdates.cover_image = updates.coverImage;
+    if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
 
     const { data, error } = await supabase
       .from('categories')
@@ -135,7 +146,7 @@ export const updateCategory = async (
     ...updates,
     updatedAt: new Date().toISOString(),
   };
-  if (updates.name) updated.slug = slugify(updates.name);
+  if (updates.name && !updates.slug) updated.slug = slugify(updates.name);
   categories[index] = updated;
   saveLocalCategories(categories);
   return updated;
@@ -151,7 +162,6 @@ export const deleteCategory = async (id: string): Promise<boolean> => {
     return true;
   }
 
-  const categories = getLocalCategories().filter((c) => c.id !== id);
-  saveLocalCategories(categories);
+  saveLocalCategories(getLocalCategories().filter((c) => c.id !== id));
   return true;
 };

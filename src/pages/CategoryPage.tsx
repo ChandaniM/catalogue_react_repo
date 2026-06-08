@@ -6,15 +6,14 @@ import SearchBar from '../components/SearchBar';
 import ProductCard from '../components/ProductCard';
 import Loading from '../components/Loading';
 import type { Product, Category } from '../types';
-import { fetchProducts, fetchTags } from '../lib/products';
+import { fetchProducts } from '../lib/products';
 import { fetchCategoryBySlug } from '../services/categories';
-import { ChevronLeft, Folder } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 const CategoryPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const [category, setCategory] = useState<Category | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
@@ -27,14 +26,13 @@ const CategoryPage = () => {
       }
 
       try {
-        const [categoryData, productsData, tagsData] = await Promise.all([
-          fetchCategoryBySlug(slug),
-          fetchProducts(),
-          fetchTags(),
-        ]);
+        const categoryData = await fetchCategoryBySlug(slug);
         setCategory(categoryData);
-        setProducts(productsData);
-        setTags(tagsData);
+
+        if (categoryData) {
+          const productsData = await fetchProducts();
+          setProducts(productsData);
+        }
       } catch (error) {
         console.error('Error loading category page:', error);
       } finally {
@@ -49,6 +47,14 @@ const CategoryPage = () => {
     if (!category) return [];
     return products.filter((p) => p.categoryId === category.id);
   }, [products, category]);
+
+  const tagChips = useMemo(() => {
+    const tags = new Set<string>();
+    categoryProducts.forEach((p) => p.tags?.forEach((t) => tags.add(t)));
+    return Array.from(tags)
+      .sort()
+      .map((tag) => ({ key: tag, label: tag }));
+  }, [categoryProducts]);
 
   const filteredProducts = useMemo(() => {
     let filtered = categoryProducts;
@@ -75,7 +81,7 @@ const CategoryPage = () => {
         <Header />
         <main className="flex-1 py-10">
           <div className="max-w-7xl mx-auto px-4">
-            <Loading message="Loading category..." />
+            <Loading message="Loading products..." />
           </div>
         </main>
         <Footer />
@@ -113,34 +119,15 @@ const CategoryPage = () => {
             <ChevronLeft size={16} /> Back to Categories
           </Link>
 
-          <div className="flex items-center gap-4 mb-6">
-            {category.coverImage ? (
-              <img
-                src={category.coverImage}
-                alt={category.name}
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover shadow-sm"
-              />
-            ) : (
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[var(--primary-light)] flex items-center justify-center text-[var(--primary)]">
-                <Folder size={28} />
-              </div>
-            )}
-            <div>
-              <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-semibold text-[var(--charcoal)]">
-                {category.name}
-              </h1>
-              <p className="text-sm text-gray-400 mt-1">
-                {categoryProducts.length} {categoryProducts.length === 1 ? 'product' : 'products'}
-              </p>
-            </div>
-          </div>
-
           <SearchBar
             value={searchTerm}
             onChange={setSearchTerm}
-            tags={tags}
-            selectedTag={selectedTag}
-            onTagSelect={setSelectedTag}
+            chips={tagChips}
+            selectedChip={selectedTag}
+            onChipSelect={setSelectedTag}
+            allLabel="All"
+            mobileTitle="Filter by Tag"
+            showChips={tagChips.length > 0}
           />
 
           {filteredProducts.length === 0 ? (

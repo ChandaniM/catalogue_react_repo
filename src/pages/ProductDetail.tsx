@@ -97,7 +97,7 @@ const ProductDetail = () => {
             </div>
 
             <div className="py-2 sm:py-3 md:py-5">
-              <nav className="flex items-center gap-2 text-xs sm:text-sm mb-4 sm:mb-6">
+              <nav className="flex items-center gap-2 text-xs sm:text-sm mb-4 sm:mb-6 flex-wrap">
                 <Link
                   to="/"
                   className="text-[var(--accent-light)] hover:text-[var(--accent)] transition-colors no-underline"

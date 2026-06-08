@@ -3,6 +3,7 @@ export interface Category {
   name: string;
   slug: string;
   coverImage?: string;
+  isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

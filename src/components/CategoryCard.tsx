@@ -4,10 +4,9 @@ import type { Category } from '../types';
 
 interface CategoryCardProps {
   category: Category;
-  productCount?: number;
 }
 
-const CategoryCard = ({ category, productCount }: CategoryCardProps) => {
+const CategoryCard = ({ category }: CategoryCardProps) => {
   return (
     <Link
       to={`/category/${category.slug}`}
@@ -27,15 +26,10 @@ const CategoryCard = ({ category, productCount }: CategoryCardProps) => {
           </div>
         )}
       </div>
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-3">
         <h3 className="font-display font-semibold text-xs sm:text-sm text-[var(--charcoal)] line-clamp-1 group-hover:text-[var(--primary)] transition-colors">
           {category.name}
         </h3>
-        {productCount !== undefined && (
-          <span className="text-[10px] bg-[var(--primary-light)] text-[var(--primary)] px-2 py-0.5 rounded-full font-bold shrink-0 ml-2">
-            {productCount} {productCount === 1 ? 'Gift' : 'Gifts'}
-          </span>
-        )}
       </div>
     </Link>
   );

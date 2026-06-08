@@ -5,27 +5,24 @@ import SearchBar from '../components/SearchBar';
 import CategoryCard from '../components/CategoryCard';
 import Loading from '../components/Loading';
 import type { Product, Category } from '../types';
-import { fetchProducts, fetchTags } from '../lib/products';
+import { fetchProducts } from '../lib/products';
 import { fetchCategories } from '../services/categories';
 
 const Catalogue = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTag, setSelectedTag] = useState('');
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [productsData, tagsData, categoriesData] = await Promise.all([
+        const [productsData, categoriesData] = await Promise.all([
           fetchProducts(),
-          fetchTags(),
-          fetchCategories(),
+          fetchCategories(true),
         ]);
         setProducts(productsData);
-        setTags(tagsData);
         setCategories(categoriesData);
       } catch (error) {
         console.error('Error fetching catalogue data:', error);
@@ -37,40 +34,33 @@ const Catalogue = () => {
     loadData();
   }, []);
 
-  const filteredProducts = useMemo(() => {
-    let filtered = products;
+  const categoryChips = useMemo(
+    () => categories.map((c) => ({ key: c.slug, label: c.name })),
+    [categories]
+  );
 
-    if (selectedTag) {
-      filtered = filtered.filter((p) => p.tags?.includes(selectedTag));
+  const displayCategories = useMemo(() => {
+    let result = categories;
+
+    if (selectedCategorySlug) {
+      result = result.filter((c) => c.slug === selectedCategorySlug);
     }
 
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(term) ||
-          p.description.toLowerCase().includes(term)
-      );
+      result = result.filter((category) => {
+        const nameMatch = category.name.toLowerCase().includes(term);
+        const productMatch = products.some(
+          (p) =>
+            p.categoryId === category.id &&
+            (p.name.toLowerCase().includes(term) || p.description.toLowerCase().includes(term))
+        );
+        return nameMatch || productMatch;
+      });
     }
 
-    return filtered;
-  }, [products, selectedTag, searchTerm]);
-
-  const displayCategories = useMemo(() => {
-    const hasFilters = selectedTag || searchTerm.trim();
-
-    return categories
-      .map((category) => {
-        const count = filteredProducts.filter((p) => p.categoryId === category.id).length;
-        const fallbackCover = products.find((p) => p.categoryId === category.id)?.image_url;
-        return {
-          ...category,
-          productCount: count,
-          coverImage: category.coverImage || fallbackCover,
-        };
-      })
-      .filter((category) => !hasFilters || category.productCount > 0);
-  }, [categories, filteredProducts, products, selectedTag, searchTerm]);
+    return result;
+  }, [categories, products, selectedCategorySlug, searchTerm]);
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -80,9 +70,11 @@ const Catalogue = () => {
           <SearchBar
             value={searchTerm}
             onChange={setSearchTerm}
-            tags={tags}
-            selectedTag={selectedTag}
-            onTagSelect={setSelectedTag}
+            chips={categoryChips}
+            selectedChip={selectedCategorySlug}
+            onChipSelect={setSelectedCategorySlug}
+            allLabel="All"
+            mobileTitle="Select Category"
           />
 
           {loading ? (
@@ -103,11 +95,7 @@ const Catalogue = () => {
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
                 {displayCategories.map((category) => (
-                  <CategoryCard
-                    key={category.id}
-                    category={category}
-                    productCount={category.productCount}
-                  />
+                  <CategoryCard key={category.id} category={category} />
                 ))}
               </div>
             </div>
