@@ -1,3 +1,12 @@
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  coverImage?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -7,6 +16,7 @@ export interface Product {
   sellingPrice: number;
   quantity?: number;
   tags?: string[];
+  categoryId: string;
 }
 
 export interface AdminCredentials {

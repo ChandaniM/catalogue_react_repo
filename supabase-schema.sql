@@ -88,3 +88,67 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Done! Admin users table is ready.
 -- Add admin user: INSERT INTO admin_users (email, password) 
 -- VALUES ('admin@uphargifts.com', crypt('YourPassword', gen_salt('bf')));
+
+-- ============================================
+-- CATEGORIES TABLE
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS categories (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  cover_image TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_categories_slug ON categories(slug);
+
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read access on categories" ON categories
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow all operations on categories" ON categories
+  FOR ALL USING (true) WITH CHECK (true);
+
+DROP TRIGGER IF EXISTS update_categories_updated_at ON categories;
+CREATE TRIGGER update_categories_updated_at
+  BEFORE UPDATE ON categories
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- TAGS TABLE
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS tags (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL
+);
+
+ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read access on tags" ON tags
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow all operations on tags" ON tags
+  FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================
+-- PRODUCT CATEGORY RELATIONSHIP
+-- ============================================
+
+ALTER TABLE products
+  ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES categories(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
+
+-- Migrate existing products without a category into a default "General" category
+INSERT INTO categories (name, slug)
+SELECT 'General', 'general'
+WHERE NOT EXISTS (SELECT 1 FROM categories WHERE slug = 'general');
+
+UPDATE products
+SET category_id = (SELECT id FROM categories WHERE slug = 'general' LIMIT 1)
+WHERE category_id IS NULL;

@@ -1,27 +1,56 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import { DUMMY_PRODUCTS } from '../data/products';
+import { DUMMY_CATEGORIES } from '../data/categories';
 import type { Product } from '../types';
 
-// Local storage key for fallback mode
 const LOCAL_STORAGE_KEY = 'uphar_products';
+const MIGRATION_KEY = 'uphar_products_migrated_v1';
 
-// Get products from local storage (fallback mode)
-const getLocalProducts = (): Product[] => {
-  const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-  if (stored) {
-    return JSON.parse(stored);
-  }
-  // Initialize with dummy data
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DUMMY_PRODUCTS));
-  return DUMMY_PRODUCTS;
+const mapFromDb = (p: Record<string, unknown>): Product => ({
+  id: p.id as string,
+  name: p.name as string,
+  description: p.description as string,
+  image_url: p.image_url as string,
+  costPrice: p.cost_price as number,
+  sellingPrice: p.selling_price as number,
+  quantity: p.quantity as number | undefined,
+  tags: (p.tags as string[]) || [],
+  categoryId: (p.category_id as string) || '',
+});
+
+const migrateLocalProducts = (products: Product[]): Product[] => {
+  const defaultCategoryId = DUMMY_CATEGORIES[0]?.id || 'cat-general';
+  return products.map((p) => ({
+    ...p,
+    categoryId: p.categoryId || defaultCategoryId,
+  }));
 };
 
-// Save products to local storage (fallback mode)
+const getLocalProducts = (): Product[] => {
+  const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+  let products: Product[];
+
+  if (stored) {
+    products = JSON.parse(stored);
+  } else {
+    products = DUMMY_PRODUCTS;
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
+  }
+
+  if (!localStorage.getItem(MIGRATION_KEY)) {
+    const migrated = migrateLocalProducts(products);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(migrated));
+    localStorage.setItem(MIGRATION_KEY, 'true');
+    return migrated;
+  }
+
+  return products;
+};
+
 const saveLocalProducts = (products: Product[]) => {
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
 };
 
-// Fetch all products
 export const fetchProducts = async (): Promise<Product[]> => {
   if (isSupabaseConfigured() && supabase) {
     const { data, error } = await supabase
@@ -34,22 +63,17 @@ export const fetchProducts = async (): Promise<Product[]> => {
       return getLocalProducts();
     }
 
-    return data.map((p) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      image_url: p.image_url,
-      costPrice: p.cost_price,
-      sellingPrice: p.selling_price,
-      quantity: p.quantity,
-      tags: p.tags || [],
-    }));
+    return data.map(mapFromDb);
   }
 
   return getLocalProducts();
 };
 
-// Fetch single product by ID
+export const fetchProductsByCategory = async (categoryId: string): Promise<Product[]> => {
+  const products = await fetchProducts();
+  return products.filter((p) => p.categoryId === categoryId);
+};
+
 export const fetchProductById = async (id: string): Promise<Product | null> => {
   if (isSupabaseConfigured() && supabase) {
     const { data, error } = await supabase
@@ -63,22 +87,12 @@ export const fetchProductById = async (id: string): Promise<Product | null> => {
       return null;
     }
 
-    return {
-      id: data.id,
-      name: data.name,
-      description: data.description,
-      image_url: data.image_url,
-      costPrice: data.cost_price,
-      sellingPrice: data.selling_price,
-      quantity: data.quantity,
-    };
+    return mapFromDb(data);
   }
 
-  const products = getLocalProducts();
-  return products.find((p) => p.id === id) || null;
+  return getLocalProducts().find((p) => p.id === id) || null;
 };
 
-// Add new product
 export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product | null> => {
   if (isSupabaseConfigured() && supabase) {
     const { data, error } = await supabase
@@ -91,6 +105,7 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product 
         selling_price: product.sellingPrice,
         quantity: product.quantity,
         tags: product.tags || [],
+        category_id: product.categoryId,
       })
       .select()
       .single();
@@ -100,19 +115,9 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product 
       return null;
     }
 
-    return {
-      id: data.id,
-      name: data.name,
-      description: data.description,
-      image_url: data.image_url,
-      costPrice: data.cost_price,
-      sellingPrice: data.selling_price,
-      quantity: data.quantity,
-      tags: data.tags || [],
-    };
+    return mapFromDb(data);
   }
 
-  // Fallback: save to local storage
   const products = getLocalProducts();
   const newProduct: Product = {
     id: String(Date.now()),
@@ -123,7 +128,6 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product 
   return newProduct;
 };
 
-// Update existing product
 export const updateProduct = async (id: string, updates: Partial<Omit<Product, 'id'>>): Promise<Product | null> => {
   if (isSupabaseConfigured() && supabase) {
     const supabaseUpdates: Record<string, unknown> = {};
@@ -134,6 +138,7 @@ export const updateProduct = async (id: string, updates: Partial<Omit<Product, '
     if (updates.sellingPrice !== undefined) supabaseUpdates.selling_price = updates.sellingPrice;
     if (updates.quantity !== undefined) supabaseUpdates.quantity = updates.quantity;
     if (updates.tags !== undefined) supabaseUpdates.tags = updates.tags;
+    if (updates.categoryId !== undefined) supabaseUpdates.category_id = updates.categoryId;
 
     const { data, error } = await supabase
       .from('products')
@@ -147,18 +152,9 @@ export const updateProduct = async (id: string, updates: Partial<Omit<Product, '
       return null;
     }
 
-    return {
-      id: data.id,
-      name: data.name,
-      description: data.description,
-      image_url: data.image_url,
-      costPrice: data.cost_price,
-      sellingPrice: data.selling_price,
-      quantity: data.quantity,
-    };
+    return mapFromDb(data);
   }
 
-  // Fallback: update local storage
   const products = getLocalProducts();
   const index = products.findIndex((p) => p.id === id);
   if (index === -1) return null;
@@ -168,7 +164,6 @@ export const updateProduct = async (id: string, updates: Partial<Omit<Product, '
   return products[index];
 };
 
-// Delete product
 export const deleteProduct = async (id: string): Promise<boolean> => {
   if (isSupabaseConfigured() && supabase) {
     const { error } = await supabase
@@ -183,7 +178,6 @@ export const deleteProduct = async (id: string): Promise<boolean> => {
     return true;
   }
 
-  // Fallback: delete from local storage
   const products = getLocalProducts();
   const filtered = products.filter((p) => p.id !== id);
   saveLocalProducts(filtered);
@@ -195,7 +189,6 @@ export const deleteProduct = async (id: string): Promise<boolean> => {
 const TAGS_STORAGE_KEY = 'uphar_tags';
 const DEFAULT_TAGS = ['Birthday', 'Anniversary', 'Self Care', 'Luxury', 'Hampers', 'Personalized'];
 
-// Get tags from local storage
 const getLocalTags = (): string[] => {
   const stored = localStorage.getItem(TAGS_STORAGE_KEY);
   if (stored) {
@@ -205,12 +198,10 @@ const getLocalTags = (): string[] => {
   return DEFAULT_TAGS;
 };
 
-// Save tags to local storage
 const saveLocalTags = (tags: string[]) => {
   localStorage.setItem(TAGS_STORAGE_KEY, JSON.stringify(tags));
 };
 
-// Fetch all tags
 export const fetchTags = async (): Promise<string[]> => {
   if (isSupabaseConfigured() && supabase) {
     const { data, error } = await supabase
@@ -229,7 +220,6 @@ export const fetchTags = async (): Promise<string[]> => {
   return getLocalTags();
 };
 
-// Add new tag
 export const addTag = async (name: string): Promise<boolean> => {
   if (isSupabaseConfigured() && supabase) {
     const { error } = await supabase
@@ -251,7 +241,6 @@ export const addTag = async (name: string): Promise<boolean> => {
   return true;
 };
 
-// Delete tag
 export const deleteTag = async (name: string): Promise<boolean> => {
   if (isSupabaseConfigured() && supabase) {
     const { error } = await supabase

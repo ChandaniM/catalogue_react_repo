@@ -8,6 +8,7 @@ export const DUMMY_PRODUCTS: Product[] = [
     image_url: "https://images.unsplash.com/photo-1602028915047-37269d1a73f7?w=400&h=400&fit=crop",
     costPrice: 450,
     sellingPrice: 699,
+    categoryId: "cat-candles",
   },
   {
     id: "2",
@@ -16,6 +17,7 @@ export const DUMMY_PRODUCTS: Product[] = [
     image_url: "https://images.unsplash.com/photo-1513519245088-0e12902e35a6?w=400&h=400&fit=crop",
     costPrice: 320,
     sellingPrice: 549,
+    categoryId: "cat-frames",
   },
   {
     id: "3",
@@ -24,6 +26,7 @@ export const DUMMY_PRODUCTS: Product[] = [
     image_url: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=400&h=400&fit=crop",
     costPrice: 850,
     sellingPrice: 1299,
+    categoryId: "cat-hampers",
   },
   {
     id: "4",
@@ -32,6 +35,7 @@ export const DUMMY_PRODUCTS: Product[] = [
     image_url: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=400&h=400&fit=crop",
     costPrice: 580,
     sellingPrice: 899,
+    categoryId: "cat-accessories",
   },
   {
     id: "5",
@@ -40,6 +44,7 @@ export const DUMMY_PRODUCTS: Product[] = [
     image_url: "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?w=400&h=400&fit=crop",
     costPrice: 280,
     sellingPrice: 449,
+    categoryId: "cat-hampers",
   },
   {
     id: "6",
@@ -48,5 +53,6 @@ export const DUMMY_PRODUCTS: Product[] = [
     image_url: "https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=400&h=400&fit=crop",
     costPrice: 720,
     sellingPrice: 1099,
+    categoryId: "cat-accessories",
   },
 ];

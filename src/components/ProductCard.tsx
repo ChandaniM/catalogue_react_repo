@@ -18,6 +18,14 @@ const ProductCard = ({ product }: ProductCardProps) => {
           loading="lazy"
           className="w-full h-full object-cover transition-transform duration-500 hover:scale-105 md:hover:scale-110"
         />
+        {/* Safe Check for optional item quantities prevents error TS18048 */}
+        {product.quantity !== undefined && product.quantity <= 0 && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <span className="bg-red-600 text-white font-bold text-[10px] sm:text-xs tracking-wider uppercase py-1 px-2.5 rounded-md">
+              Sold Out
+            </span>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--primary-dark)]/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
       </div>
       <div className="p-2.5 sm:p-4 md:p-5 lg:p-6 pb-3 sm:pb-5 md:pb-6 bg-gradient-to-b from-white to-[var(--primary-light)]/30">

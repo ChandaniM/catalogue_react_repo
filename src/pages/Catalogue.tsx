@@ -2,14 +2,15 @@ import { useState, useEffect, useMemo } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import SearchBar from '../components/SearchBar';
-import ProductCard from '../components/ProductCard';
+import CategoryCard from '../components/CategoryCard';
 import Loading from '../components/Loading';
-import type { Product } from '../types';
-import emptyPage from '../assets/on-product-found.png';
-import { fetchProducts as getProducts, fetchTags } from '../lib/products';
+import type { Product, Category } from '../types';
+import { fetchProducts, fetchTags } from '../lib/products';
+import { fetchCategories } from '../services/categories';
 
 const Catalogue = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,14 +19,16 @@ const Catalogue = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [productsData, tagsData] = await Promise.all([
-          getProducts(),
-          fetchTags()
+        const [productsData, tagsData, categoriesData] = await Promise.all([
+          fetchProducts(),
+          fetchTags(),
+          fetchCategories(),
         ]);
         setProducts(productsData);
         setTags(tagsData);
+        setCategories(categoriesData);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching catalogue data:', error);
       } finally {
         setLoading(false);
       }
@@ -36,34 +39,46 @@ const Catalogue = () => {
 
   const filteredProducts = useMemo(() => {
     let filtered = products;
-    
-    // Filter by tag first
+
     if (selectedTag) {
-      filtered = filtered.filter(
-        (product) => product.tags?.includes(selectedTag)
-      );
+      filtered = filtered.filter((p) => p.tags?.includes(selectedTag));
     }
-    
-    // Then filter by search term
+
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
-        (product) =>
-          product.name.toLowerCase().includes(term) ||
-          product.description.toLowerCase().includes(term)
+        (p) =>
+          p.name.toLowerCase().includes(term) ||
+          p.description.toLowerCase().includes(term)
       );
     }
-    
+
     return filtered;
-  }, [products, searchTerm, selectedTag]);
+  }, [products, selectedTag, searchTerm]);
+
+  const displayCategories = useMemo(() => {
+    const hasFilters = selectedTag || searchTerm.trim();
+
+    return categories
+      .map((category) => {
+        const count = filteredProducts.filter((p) => p.categoryId === category.id).length;
+        const fallbackCover = products.find((p) => p.categoryId === category.id)?.image_url;
+        return {
+          ...category,
+          productCount: count,
+          coverImage: category.coverImage || fallbackCover,
+        };
+      })
+      .filter((category) => !hasFilters || category.productCount > 0);
+  }, [categories, filteredProducts, products, selectedTag, searchTerm]);
 
   return (
-    <>
+    <div className="min-h-screen flex flex-col bg-white">
       <Header />
       <main className="flex-1 py-4 sm:py-6 md:py-8 lg:py-10 xl:py-12">
         <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10">
-          <SearchBar 
-            value={searchTerm} 
+          <SearchBar
+            value={searchTerm}
             onChange={setSearchTerm}
             tags={tags}
             selectedTag={selectedTag}
@@ -72,27 +87,35 @@ const Catalogue = () => {
 
           {loading ? (
             <Loading />
-          ) : filteredProducts.length === 0 ? (
+          ) : displayCategories.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 sm:py-12 md:py-16">
-              <img src={emptyPage} alt="No products found" className="w-28 h-28 sm:w-32 sm:h-32 md:w-40 md:h-40 object-contain mb-4 sm:mb-6 opacity-80" />
-              <p className="text-gray-500 text-sm sm:text-base">No products found.</p>
+              <p className="text-4xl mb-4 opacity-60">📁</p>
+              <p className="text-gray-500 text-sm sm:text-base">
+                {categories.length === 0
+                  ? 'No categories available yet.'
+                  : 'No matching categories found.'}
+              </p>
             </div>
           ) : (
-            <>
-            <h2 className="font-display text-lg sm:text-xl md:text-2xl font-semibold text-[var(--charcoal)] mb-4 sm:mb-5 md:mb-6">
-              Featured Gifts
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-2.5 sm:gap-4 md:gap-5 lg:gap-6 xl:gap-7">
-              {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+            <div className="mt-4">
+              <h2 className="font-display text-lg sm:text-xl md:text-2xl font-semibold text-[var(--charcoal)] mb-4 sm:mb-5">
+                Browse Categories
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
+                {displayCategories.map((category) => (
+                  <CategoryCard
+                    key={category.id}
+                    category={category}
+                    productCount={category.productCount}
+                  />
+                ))}
+              </div>
             </div>
-            </>
           )}
         </div>
       </main>
       <Footer />
-    </>
+    </div>
   );
 };
 
