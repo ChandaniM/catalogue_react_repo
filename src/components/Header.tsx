@@ -7,7 +7,7 @@ interface HeaderProps {
 
 const Header = ({ showAdminLink = false }: HeaderProps) => {
   return (
-    <header className="sticky top-0 z-50 py-2 sm:py-3 md:py-4 lg:py-5" style={{ background: 'linear-gradient(135deg, #7a4d6a 0%, #9c6b8a 100%)' }}>
+    <header className="sticky top-0 z-50 py-2 sm:py-3 md:py-4 lg:py-5 border-b border-gray-200" style={{ background: '#ffffff' }}>
       <div className="max-w-7xl 2xl:max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 flex flex-col items-center">
         <Link to="/" className="no-underline">
           <img src={logo} alt="Uphar - The Gift Shop" className="h-16 sm:h-20 md:h-24 lg:h-28 xl:h-32 2xl:h-36" />

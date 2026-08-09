@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import Header from '../components/Header';
+import NavBar from '../components/NavBar';
 import Footer from '../components/Footer';
 import Loading from '../components/Loading';
 import type { Product, Category } from '../types';
 import { fetchProductById } from '../lib/products';
 import { fetchCategories } from '../services/categories';
+import { useShop } from '../context/ShopContext';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +14,7 @@ const ProductDetail = () => {
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const { addToCart } = useShop();
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -53,7 +55,7 @@ const ProductDetail = () => {
   if (loading) {
     return (
       <>
-        <Header />
+        <NavBar />
         <main className="flex-1 py-6 sm:py-8 md:py-10">
           <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
             <Loading message="Loading product..." />
@@ -67,7 +69,7 @@ const ProductDetail = () => {
   if (!product) {
     return (
       <>
-        <Header />
+        <NavBar />
         <main className="flex-1 py-6 sm:py-8 md:py-10">
           <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 text-center py-10 sm:py-16 md:py-20">
             <p className="text-4xl sm:text-5xl mb-3 sm:mb-4">🎁</p>
@@ -84,7 +86,7 @@ const ProductDetail = () => {
 
   return (
     <>
-      <Header />
+      <NavBar />
       <main className="flex-1 py-4 sm:py-6 md:py-8 lg:py-10">
         <div className="max-w-7xl 2xl:max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 md:gap-10 lg:gap-12 xl:gap-16 items-start">
@@ -125,7 +127,14 @@ const ProductDetail = () => {
                 {product.description}
               </p>
 
-              <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => addToCart(product.id)}
+                  className="btn btn-primary justify-center"
+                >
+                  <i className="fas fa-shopping-cart" /> Add to cart
+                </button>
                 <a
                   href={`https://wa.me/?text=${whatsappMessage}`}
                   target="_blank"

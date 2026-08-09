@@ -16,8 +16,21 @@ export interface Product {
   costPrice: number;
   sellingPrice: number;
   quantity?: number;
+  soldQuantity?: number;
   tags?: string[];
   categoryId: string;
+  createdAt?: string;
+  isNewArrival?: boolean;
+  isDeal?: boolean;
+  isPreOrder?: boolean;
+}
+
+export interface Slide {
+  id: string;
+  title: string;
+  subtitle: string;
+  button: string;
+  image: string;
 }
 
 export interface AdminCredentials {

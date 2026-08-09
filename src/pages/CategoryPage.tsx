@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import Header from '../components/Header';
+import NavBar from '../components/NavBar';
 import Footer from '../components/Footer';
 import SearchBar from '../components/SearchBar';
 import ProductCard from '../components/ProductCard';
 import Loading from '../components/Loading';
+import { useShop } from '../context/ShopContext';
 import type { Product, Category } from '../types';
 import { fetchProducts } from '../lib/products';
 import { fetchCategoryBySlug } from '../services/categories';
@@ -15,8 +16,8 @@ const CategoryPage = () => {
   const [category, setCategory] = useState<Category | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
+  const { searchQuery, setSearchQuery } = useShop();
 
   useEffect(() => {
     const loadData = async () => {
@@ -63,8 +64,8 @@ const CategoryPage = () => {
       filtered = filtered.filter((p) => p.tags?.includes(selectedTag));
     }
 
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
+    if (searchQuery.trim()) {
+      const term = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(term) ||
@@ -73,12 +74,12 @@ const CategoryPage = () => {
     }
 
     return filtered;
-  }, [categoryProducts, selectedTag, searchTerm]);
+  }, [categoryProducts, selectedTag, searchQuery]);
 
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
-        <Header />
+        <NavBar />
         <main className="flex-1 py-10">
           <div className="max-w-7xl mx-auto px-4">
             <Loading message="Loading products..." />
@@ -92,7 +93,7 @@ const CategoryPage = () => {
   if (!category) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
-        <Header />
+        <NavBar />
         <main className="flex-1 py-10">
           <div className="max-w-7xl mx-auto px-4 text-center py-16">
             <p className="text-4xl mb-4">📁</p>
@@ -109,7 +110,7 @@ const CategoryPage = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <Header />
+      <NavBar />
       <main className="flex-1 py-4 sm:py-6 md:py-8 lg:py-10 xl:py-12">
         <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10">
           <Link
@@ -120,8 +121,8 @@ const CategoryPage = () => {
           </Link>
 
           <SearchBar
-            value={searchTerm}
-            onChange={setSearchTerm}
+            value={searchQuery}
+            onChange={setSearchQuery}
             chips={tagChips}
             selectedChip={selectedTag}
             onChipSelect={setSelectedTag}
