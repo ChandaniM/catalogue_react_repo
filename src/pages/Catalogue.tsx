@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Footer from '../components/Footer';
 import ShippingBar from '../components/ShippingBar';
 import NavBar from '../components/NavBar';
+import HeroSlider from '../components/HeroSlider';
 import CategorySection from '../components/CategorySection';
 import SelectedProductsSection from '../components/SelectedProductsSection';
 import { useShop } from '../context/ShopContext';
@@ -31,6 +32,8 @@ const Catalogue = () => {
       <ShippingBar />
       <NavBar />
       <main className="flex-1">
+        {/* Hero slider with 3 slides */}
+        <HeroSlider />
         <CategorySection />
         <SelectedProductsSection products={products} cartItems={cart} wishlist={wishlist} />
       </main>

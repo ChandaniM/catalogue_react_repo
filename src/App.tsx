@@ -10,6 +10,7 @@ import CartPage from './pages/CartPage';
 import WishlistPage from './pages/WishlistPage';
 import CheckoutPage from './pages/CheckoutPage';
 import SearchPage from './pages/SearchPage';
+import Contact from './pages/Contact';
 import ProductListingPage from './pages/ProductListingPage';
 import ShareSelectionPage from './pages/ShareSelectionPage';
 
@@ -33,6 +34,7 @@ function App() {
           <Route path="/share/:token" element={<ShareSelectionPage />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/add-product" element={<AddProduct />} />
+         <Route path="/contact" element={<Contact />} />
         </Routes>
       </div>
     </ShopProvider>
