@@ -28,7 +28,11 @@ const OccasionDetailPage: React.FC = () => {
   const filtered = useMemo(() => {
     if (!key) return [];
     const k = key.toLowerCase();
-    return products.filter((p) => (p.tags || []).map((t: string) => t.toLowerCase()).includes(k));
+    return products.filter((p) => {
+      const matchesTag = (p.tags || []).map((t: string) => t.toLowerCase()).includes(k);
+      const matchesOccasion = (p.occasion || '').toLowerCase() === k;
+      return matchesTag || matchesOccasion;
+    });
   }, [products, key]);
 
   if (loading) return (

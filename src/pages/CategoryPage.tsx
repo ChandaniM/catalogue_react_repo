@@ -7,7 +7,6 @@ import { useShop } from '../context/ShopContext';
 import type { Product, Category } from '../types';
 import { fetchProducts } from '../lib/products';
 import { fetchCategoryBySlug } from '../services/categories';
-import { ChevronLeft } from 'lucide-react';
 import KeychainProductCard from '../components/KeychainProductCard';
 import ProductCard from '../components/ProductCard';
 
@@ -17,7 +16,7 @@ const CategoryPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState('');
-  const { searchQuery, setSearchQuery } = useShop();
+  const { searchQuery } = useShop();
 
   // Keychain-specific UI state
   const [activeFilter, setActiveFilter] = useState<'All' | 'Acrylic' | 'Anime' | 'Custom' | 'Metal'>('All');
@@ -79,14 +78,6 @@ const CategoryPage = () => {
 
     return items;
   }, [categoryProducts, activeFilter, selectedTag, searchQuery, sortBy, category]);
-
-  const tagChips = useMemo(() => {
-    const tags = new Set<string>();
-    categoryProducts.forEach((p) => p.tags?.forEach((t) => tags.add(t)));
-    return Array.from(tags)
-      .sort()
-      .map((tag) => ({ key: tag, label: tag }));
-  }, [categoryProducts]);
 
   const filteredProducts = useMemo(() => {
     let filtered = categoryProducts;

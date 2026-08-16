@@ -1,17 +1,43 @@
 import type { Occasion } from '../types';
 
+const OCCASIONS_STORAGE_KEY = 'uphar_occasions';
+
 export const DUMMY_OCCASIONS: Occasion[] = [
-  { key: 'birthday', label: 'Birthday' },
-  { key: 'anniversary', label: 'Anniversary' },
-  { key: 'wedding', label: 'Wedding' },
-  { key: 'corporate', label: 'Corporate' },
-  { key: 'festive', label: 'Festive' },
-  { key: 'new-baby', label: 'New Baby' },
-  { key: 'thank-you', label: 'Thank You' },
-  { key: 'just-because', label: 'Just Because' },
+  { key: 'birthday', label: 'Birthday', icon: '🎂' },
+  { key: 'anniversary', label: 'Anniversary', icon: '💑' },
+  { key: 'wedding', label: 'Wedding', icon: '💍' },
+  { key: 'corporate', label: 'Corporate', icon: '🏢' },
+  { key: 'festive', label: 'Festive', icon: '🪔' },
+  { key: 'new-baby', label: 'New Baby', icon: '🍼' },
+  { key: 'thank-you', label: 'Thank You', icon: '🙏' },
+  { key: 'just-because', label: 'Just Because', icon: '🎁' },
 ];
 
+export const getStoredOccasions = (): Occasion[] => {
+  if (typeof window === 'undefined') return DUMMY_OCCASIONS;
+
+  try {
+    const saved = window.localStorage.getItem(OCCASIONS_STORAGE_KEY);
+    if (!saved) return DUMMY_OCCASIONS;
+
+    const parsed = JSON.parse(saved) as Occasion[];
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  } catch (error) {
+    console.error('Unable to parse saved occasions:', error);
+  }
+
+  return DUMMY_OCCASIONS;
+};
+
+export const saveOccasions = (items: Occasion[]): Occasion[] => {
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(OCCASIONS_STORAGE_KEY, JSON.stringify(items));
+  }
+  return items;
+};
+
 export const fetchOccasions = async (): Promise<Occasion[]> => {
-  // Placeholder for future API-driven occasions (admin-manageable)
-  return new Promise((resolve) => setTimeout(() => resolve(DUMMY_OCCASIONS), 120));
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(getStoredOccasions()), 120);
+  });
 };

@@ -9,6 +9,8 @@ interface ProductCardProps {
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const { addToCart } = useShop();
+  const isSoldOut = (product.quantity ?? 0) <= 0;
+
   return (
     <div className="product-card block bg-white rounded-xl sm:rounded-2xl md:rounded-3xl overflow-hidden shadow-md hover:shadow-2xl hover:-translate-y-1 md:hover:-translate-y-2 transition-all duration-300 border-2 border-transparent hover:border-[var(--primary)]">
       <Link to={`/product/${product.id}`} className="no-underline">
@@ -41,8 +43,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
 
         <div className="mt-4 flex items-center justify-between">
           <div className="text-lg font-semibold text-[var(--charcoal)]">₹{product.sellingPrice}</div>
-          <button onClick={() => addToCart(product.id)} className="btn btn-primary inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium">
-            <ShoppingCart size={14} /> Add
+          <button
+            onClick={() => !isSoldOut && addToCart(product.id)}
+            disabled={isSoldOut}
+            className="btn btn-primary inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <ShoppingCart size={14} /> {isSoldOut ? 'Sold out' : 'Add'}
           </button>
         </div>
       </div>

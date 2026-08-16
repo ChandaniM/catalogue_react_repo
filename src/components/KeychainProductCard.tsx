@@ -10,6 +10,7 @@ interface Props {
 const KeychainProductCard = ({ product }: Props) => {
   const { addToCart, wishlist, toggleWishlist } = useShop();
   const inWishlist = wishlist.includes(product.id);
+  const isSoldOut = (product.quantity ?? 0) <= 0;
 
   return (
     <div className="bg-white rounded-lg border border-[#efe7df] overflow-hidden">
@@ -38,8 +39,12 @@ const KeychainProductCard = ({ product }: Props) => {
 
         <div className="mt-4 flex items-center justify-between">
            <div className="text-lg font-semibold text-[#1f1f1f]">₹{product.sellingPrice}</div>
-           <button onClick={() => addToCart(product.id)} className="btn btn-primary inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium">
-             <ShoppingCart size={14} /> Add
+           <button
+             onClick={() => !isSoldOut && addToCart(product.id)}
+             disabled={isSoldOut}
+             className="btn btn-primary inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+           >
+             <ShoppingCart size={14} /> {isSoldOut ? 'Sold out' : 'Add'}
            </button>
         </div>
       </div>

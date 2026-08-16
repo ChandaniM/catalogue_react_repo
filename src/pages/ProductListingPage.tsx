@@ -19,7 +19,7 @@ interface ProductListingPageProps {
 const ProductListingPage = ({ title, description, filter, hideIfDisabled = false, disabledMessage }: ProductListingPageProps) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const { searchQuery, setSearchQuery } = useShop();
+  const { searchQuery } = useShop();
 
   useEffect(() => {
     const load = async () => {

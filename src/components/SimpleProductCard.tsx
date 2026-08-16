@@ -1,5 +1,6 @@
 import { ShoppingCart } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { isProductNewArrival } from '../lib/products';
 
 interface SimpleProductCardProps {
   product: any;
@@ -10,13 +11,14 @@ interface SimpleProductCardProps {
 const SimpleProductCard = ({ product, cartQuantity, onAddToCart }: SimpleProductCardProps) => {
   const imageUrl = product.image || product.image_url || '';
   const price = product.sellingPrice || product.price || 0;
+  const showNewTag = isProductNewArrival(product, 7);
 
   return (
     <Link to={`/product/${product.id}`} className="no-underline">
       <div className="group border border-gray-200 bg-white w-56 cursor-pointer">
         <div className="relative h-44 bg-white overflow-hidden">
           <img src={imageUrl} alt={product.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-          <div className="absolute top-2 left-2 bg-black text-white text-[10px] px-2 py-1">NEW</div>
+          {showNewTag && <div className="absolute top-2 left-2 bg-black text-white text-[10px] px-2 py-1">NEW</div>}
         </div>
 
         <div className="p-3">

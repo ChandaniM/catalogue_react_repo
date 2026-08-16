@@ -64,19 +64,29 @@ const WishlistPage = () => {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {wishlistItems.map((product) => (
-                <div key={product.id} className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-                  <img src={product.image_url} alt={product.name} className="h-52 w-full rounded-3xl object-cover" />
-                  <div className="mt-4">
-                    <h2 className="text-base font-semibold text-black">{product.name}</h2>
-                    <p className="text-sm text-gray-500 mt-1">₹{product.sellingPrice.toFixed(0)}</p>
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      <button onClick={() => addToCart(product.id)} className="btn btn-primary">Add to cart</button>
-                      <button onClick={() => toggleWishlist(product.id)} className="btn btn-secondary">Remove</button>
+              {wishlistItems.map((product) => {
+                const isSoldOut = (product.quantity ?? 1) <= 0;
+
+                return (
+                  <div key={product.id} className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                    <img src={product.image_url} alt={product.name} className="h-52 w-full rounded-3xl object-cover" />
+                    <div className="mt-4">
+                      <h2 className="text-base font-semibold text-black">{product.name}</h2>
+                      <p className="text-sm text-gray-500 mt-1">₹{product.sellingPrice.toFixed(0)}</p>
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <button
+                          onClick={() => !isSoldOut && addToCart(product.id)}
+                          disabled={isSoldOut}
+                          className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isSoldOut ? 'Sold out' : 'Add to cart'}
+                        </button>
+                        <button onClick={() => toggleWishlist(product.id)} className="btn btn-secondary">Remove</button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

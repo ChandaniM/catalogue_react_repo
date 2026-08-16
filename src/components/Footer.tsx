@@ -1,3 +1,7 @@
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faInstagram, faWhatsapp } from '@fortawesome/free-brands-svg-icons';
+import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
+
 const Footer = () => {
   return (
     <footer className='mt-auto border-t border-gray-200 bg-white'>
@@ -24,25 +28,25 @@ const Footer = () => {
                 aria-label='Instagram'
                 target='_blank'
                 rel='noreferrer'
-                className='flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-sm text-black hover:bg-gray-50'
+                className='flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-black hover:bg-gray-50'
               >
-                ◎
+                <FontAwesomeIcon icon={faInstagram} className='text-base' />
               </a>
               <a
                 href='https://wa.me/917700083353'
                 aria-label='WhatsApp'
                 target='_blank'
                 rel='noreferrer'
-                className='flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-sm text-black hover:bg-gray-50'
+                className='flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-black hover:bg-gray-50'
               >
-                ✦
+                <FontAwesomeIcon icon={faWhatsapp} className='text-base' />
               </a>
               <a
                 href='mailto:hello@uphartgiftshop.com'
                 aria-label='Email'
                 className='flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-sm text-black hover:bg-gray-50'
               >
-                ✉
+                <FontAwesomeIcon icon={faEnvelope} className='text-base' />
               </a>
             </div>
           </div>

@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import type { Product, Category, Slide } from '../types';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faInstagram, faWhatsapp } from '@fortawesome/free-brands-svg-icons';
+import { faGift, faHeart, faCakeCandles, faRing, faBaby, faBriefcase, faStar, faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import type { Product, Category, Slide, Occasion } from '../types';
 import { fetchProducts, addProduct, updateProduct, deleteProduct, fetchTags, addTag, deleteTag } from '../lib/products';
 import { fetchCategories, addCategory, updateCategory, deleteCategory, slugify } from '../services/categories';
+import { fetchOccasions, saveOccasions } from '../services/occasions';
 import { fetchSlides, saveSlides } from '../lib/slides';
 import { uploadImage } from '../lib/cloudinary';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -13,15 +17,16 @@ import {
   BarChart2, ChevronRight, AlertTriangle,
 } from 'lucide-react';
 
-type ActiveView = 'products' | 'categories' | 'tags' | 'analytics' | 'slides';
+type ActiveView = 'products' | 'categories' | 'tags' | 'occasions' | 'analytics' | 'slides';
 
 const Admin = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [occasions, setOccasions] = useState<Occasion[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>('products');
 
@@ -36,6 +41,7 @@ const Admin = () => {
   const [productImage, setProductImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState('');
   const [productTags, setProductTags] = useState<string[]>([]);
+  const [productOccasion, setProductOccasion] = useState('');
   const [productIsNewArrival, setProductIsNewArrival] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -68,8 +74,15 @@ const Admin = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [newTagInput, setNewTagInput] = useState('');
 
+  // Occasion management
+  const [showOccasionModal, setShowOccasionModal] = useState(false);
+  const [occasionName, setOccasionName] = useState('');
+  const [occasionKey, setOccasionKey] = useState('');
+  const [occasionIcon, setOccasionIcon] = useState('');
+  const [occasionIconMode, setOccasionIconMode] = useState<'emoji' | 'upload' | 'fontawesome'>('emoji');
+
   // Delete confirm modal
-  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'product' | 'category' | 'tag' | 'slide'; id: string; name: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'product' | 'category' | 'tag' | 'occasion' | 'slide'; id: string; name: string } | null>(null);
 
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -90,6 +103,7 @@ const Admin = () => {
         setShowProductDrawer(false);
         setShowCategoryModal(false);
         setShowTagModal(false);
+        setShowOccasionModal(false);
         setDeleteConfirm(null);
       }
     };
@@ -100,12 +114,13 @@ const Admin = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [productsData, tagsData, categoriesData, slidesData] = await Promise.all([
-        fetchProducts(), fetchTags(), fetchCategories(), fetchSlides(),
+      const [productsData, tagsData, categoriesData, occasionData, slidesData] = await Promise.all([
+        fetchProducts(), fetchTags(), fetchCategories(), fetchOccasions(), fetchSlides(),
       ]);
       setProducts(productsData);
       setTags(tagsData);
       setCategories(categoriesData);
+      setOccasions(occasionData);
       setSlides(slidesData);
     } catch (err) {
       console.error('Error loading inventory:', err);
@@ -132,6 +147,7 @@ const Admin = () => {
     setImagePreview(product.image_url);
     setProductImage(null);
     setProductTags(product.tags || []);
+    setProductOccasion(product.occasion || '');
     setProductIsNewArrival(product.isNewArrival ?? false);
     setMessage({ type: '', text: '' });
     setShowProductDrawer(true);
@@ -142,6 +158,7 @@ const Admin = () => {
     setProductName(''); setProductDescription(''); setProductCostPrice('');
     setProductSellingPrice(''); setProductQuantity('');
     setSelectedCategoryId(''); setProductImage(null); setImagePreview(''); setProductTags([]);
+    setProductOccasion('');
     setProductIsNewArrival(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setMessage({ type: '', text: '' });
@@ -194,6 +211,7 @@ const Admin = () => {
         quantity: Number(productQuantity),
         tags: productTags,
         categoryId: selectedCategoryId,
+        occasion: productOccasion || undefined,
         isNewArrival: productIsNewArrival,
       };
 
@@ -359,6 +377,100 @@ const Admin = () => {
     setDeleteConfirm(null);
   };
 
+  // ── Occasion helpers ─────────────────────────────────────────────────────
+  const createOccasionSlug = (value: string) => value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
+  const iconNameMap: Record<string, any> = {
+    whatsapp: faWhatsapp,
+    instagram: faInstagram,
+    gift: faGift,
+    heart: faHeart,
+    sparkle: faStar,
+    sparkles: faStar,
+    cake: faCakeCandles,
+    ring: faRing,
+    baby: faBaby,
+    briefcase: faBriefcase,
+    star: faStar,
+    email: faEnvelope,
+  };
+
+  const normalizeOccasionIcon = (value: string) => value.trim();
+
+  const renderOccasionIconPreview = (iconValue: string, sizeClass = 'text-xl') => {
+    const normalized = normalizeOccasionIcon(iconValue);
+    if (!normalized) return <span className="text-gray-400">🎁</span>;
+    if (normalized.startsWith('http') || normalized.startsWith('data:image')) {
+      return <img src={normalized} alt="occasion icon" className="h-7 w-7 object-cover rounded-md" />;
+    }
+    const key = normalized.toLowerCase().replace(/^fa-/, '').replace('fa-brands ', '').replace('fa-solid ', '').replace(/[^a-z0-9]/g, '');
+    const icon = iconNameMap[key] || iconNameMap.gift;
+    if (normalized.includes('fa-') || iconNameMap[key]) {
+      return <FontAwesomeIcon icon={icon} className={sizeClass} />;
+    }
+    if (/^[\p{Extended_Pictographic}]$/u.test(normalized) || normalized.length <= 2) {
+      return <span className={sizeClass}>{normalized}</span>;
+    }
+    return <FontAwesomeIcon icon={faGift} className={sizeClass} />;
+  };
+
+  const openAddOccasion = () => {
+    setOccasionName('');
+    setOccasionKey('');
+    setOccasionIcon('');
+    setOccasionIconMode('emoji');
+    setShowOccasionModal(true);
+    setActiveView('occasions');
+  };
+
+  const handleOccasionIconFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setOccasionIcon(String(reader.result || ''));
+      setOccasionIconMode('upload');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAddOccasion = () => {
+    const label = occasionName.trim();
+    if (!label) {
+      setMessage({ type: 'error', text: 'Please enter an occasion name.' });
+      return;
+    }
+
+    const key = (occasionKey.trim() || createOccasionSlug(label)).toLowerCase();
+    if (occasions.some((item) => item.key === key)) {
+      setMessage({ type: 'error', text: 'This occasion already exists.' });
+      return;
+    }
+
+    const iconValue = occasionIconMode === 'upload' && !occasionIcon ? '' : normalizeOccasionIcon(occasionIcon);
+    const nextOccasions = [...occasions, { key, label, icon: iconValue || undefined }];
+    setOccasions(nextOccasions);
+    saveOccasions(nextOccasions);
+    setMessage({ type: 'success', text: 'Occasion added to storefront.' });
+    setShowOccasionModal(false);
+    setOccasionName('');
+    setOccasionKey('');
+    setOccasionIcon('');
+    setOccasionIconMode('emoji');
+  };
+
+  const handleDeleteOccasion = (key: string) => {
+    const nextOccasions = occasions.filter((item) => item.key !== key);
+    setOccasions(nextOccasions);
+    saveOccasions(nextOccasions);
+    setDeleteConfirm(null);
+  };
+
   // ── Slide helpers ────────────────────────────────────────────────────────
   const openAddSlide = () => {
     setEditingSlideId(null);
@@ -423,22 +535,26 @@ const Admin = () => {
   };
 
   // ── Auth ─────────────────────────────────────────────────────────────────
-  const hashPassword = async (pwd: string): Promise<string> => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(pwd);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter email and password.');
+      return;
+    }
+
     if (isSupabaseConfigured() && supabase) {
-      const hashedPassword = await hashPassword(password);
       const { data, error: authError } = await supabase.rpc('verify_admin_login', {
-        input_email: email, input_password: hashedPassword,
+        input_email: email.trim(),
+        input_password: password,
       });
-      if (authError || !data) { setError('Invalid credentials'); return; }
+
+      if (authError || !data) {
+        setError('Invalid credentials');
+        return;
+      }
+
       sessionStorage.setItem('adminAuth', 'true');
       setIsAuthenticated(true);
       loadData();
@@ -447,23 +563,31 @@ const Admin = () => {
     }
   };
 
+  const handleLogout = () => {
+    sessionStorage.removeItem('adminAuth');
+    setIsAuthenticated(false);
+    setEmail('');
+    setPassword('');
+    setError('');
+  };
+
   // ── Login screen ─────────────────────────────────────────────────────────
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-[#1a1a2e]">
-        <div className="bg-[#16213e] p-10 rounded-3xl w-full max-w-md text-center shadow-2xl border border-white/10">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#fbf7f2]">
+        <div className="bg-white p-10 rounded-3xl w-full max-w-md text-center shadow-[0_20px_60px_rgba(15,15,15,0.08)] border border-[#ece3d8]">
           <div className="mb-8">
-            <h1 className="font-display text-2xl font-normal text-[#c084b0] tracking-[0.3em] uppercase">Uphar</h1>
+            <h1 className="font-display text-2xl font-normal text-black tracking-[0.2em] uppercase">UPHΛRT</h1>
             <span className="text-[10px] text-gray-500 block mt-1 tracking-widest uppercase">Admin Portal</span>
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#c084b0] transition-colors" required />
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#c084b0] transition-colors" required />
-            <button type="submit" className="w-full py-3 bg-[#9c6b8a] hover:bg-[#b07898] text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 mt-2">
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" className="w-full px-4 py-3 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black placeholder-gray-500 text-sm focus:outline-none focus:border-black transition-colors" required />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="w-full px-4 py-3 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black placeholder-gray-500 text-sm focus:outline-none focus:border-black transition-colors" required />
+            <button type="submit" className="w-full py-3 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 mt-2">
               <LogIn size={16} /> Sign In
             </button>
           </form>
-          {error && <p className="mt-4 p-3 bg-red-500/10 text-red-400 text-sm rounded-xl border border-red-500/20">{error}</p>}
+          {error && <p className="mt-4 p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200">{error}</p>}
         </div>
       </div>
     );
@@ -474,6 +598,7 @@ const Admin = () => {
     { id: 'products', label: 'Products', icon: <Package size={18} /> },
     { id: 'categories', label: 'Categories', icon: <LayoutGrid size={18} /> },
     { id: 'tags', label: 'Tags', icon: <Tag size={18} /> },
+    { id: 'occasions', label: 'Occasions', icon: <Gift size={18} /> },
     { id: 'slides', label: 'Slides', icon: <ImagePlus size={18} /> },
     { id: 'analytics', label: 'Analytics', icon: <BarChart2 size={18} /> },
   ];
@@ -498,8 +623,8 @@ const Admin = () => {
               onClick={() => setActiveView(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 activeView === item.id
-                  ? 'bg-red-50 text-black shadow-sm'
-                  : 'text-gray-600 hover:bg-red-50 hover:text-black'
+                  ? 'bg-black text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-[#f5f1eb] hover:text-black'
               }`}
             >
               {item.icon}
@@ -513,17 +638,24 @@ const Admin = () => {
         <div className="mt-6 space-y-2">
           <button
             onClick={openAddProduct}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-all shadow-lg"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-black text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-all shadow-sm"
           >
             <Plus size={16} />
             Add Product
           </button>
           <button
             onClick={openAddCategory}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-white border border-gray-200 text-black rounded-xl text-sm font-medium hover:bg-red-50 transition-all"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#fbf7f2] border border-[#e8e0d8] text-black rounded-xl text-sm font-medium hover:bg-[#f3efe8] transition-all"
           >
             <FolderPlus size={15} />
             Add Category
+          </button>
+          <button
+            onClick={openAddOccasion}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#f5f1eb] border border-[#e8e0d8] text-black rounded-xl text-sm font-medium hover:bg-[#efe8df] transition-all"
+          >
+            <Gift size={15} />
+            Add Occasion
           </button>
         </div>
 
@@ -531,6 +663,15 @@ const Admin = () => {
         <Link to="/" className="mt-5 flex items-center gap-2 px-4 py-2 text-gray-500 hover:text-black text-xs transition-colors">
           <Store size={14} /> View Shop
         </Link>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="mt-3 flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-black transition-colors"
+        >
+          <LogIn size={14} className="rotate-180" />
+          Logout
+        </button>
       </aside>
 
       {/* ── Main content ── */}
@@ -541,7 +682,7 @@ const Admin = () => {
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-semibold">Products</h2>
-              <button onClick={openAddProduct} className="flex items-center gap-2 px-4 py-2 bg-[#9c6b8a] hover:bg-[#b07898] text-white rounded-xl text-sm font-medium transition-colors">
+              <button onClick={openAddProduct} className="flex items-center gap-2 px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-medium transition-colors">
                 <Plus size={15} /> Add product
               </button>
             </div>
@@ -591,7 +732,7 @@ const Admin = () => {
                         <td className="py-4 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => openEditProduct(product)} className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"><Pencil size={13} /></button>
-                            <button onClick={() => setDeleteConfirm({ type: 'product', id: product.id, name: product.name })} className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"><Trash2 size={13} /></button>
+                            <button onClick={() => setDeleteConfirm({ type: 'product', id: product.id, name: product.name })} className="p-1.5 rounded-lg bg-black/5 text-black hover:bg-black/10 transition-colors"><Trash2 size={13} /></button>
                           </div>
                         </td>
                       </tr>
@@ -608,7 +749,7 @@ const Admin = () => {
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-semibold">Categories</h2>
-              <button onClick={openAddCategory} className="flex items-center gap-2 px-4 py-2 bg-[#9c6b8a] hover:bg-[#b07898] text-white rounded-xl text-sm font-medium transition-colors">
+              <button onClick={openAddCategory} className="flex items-center gap-2 px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-medium transition-colors">
                 <FolderPlus size={15} /> Add Category
               </button>
             </div>
@@ -659,7 +800,7 @@ const Admin = () => {
                   placeholder="e.g., Anime, Metal, Custom..."
                   className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-red-600 transition-colors"
                 />
-                <button onClick={handleAddTag} className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-1.5">
+                <button onClick={handleAddTag} className="px-4 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-1.5">
                   <Plus size={15} /> Add
                 </button>
               </div>
@@ -681,6 +822,66 @@ const Admin = () => {
           </div>
         )}
 
+        {/* Occasions view */}
+        {activeView === 'occasions' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-semibold">Occasions</h2>
+                <p className="mt-1 text-sm text-gray-600">Create occasion buttons that appear across the storefront and on the gift browsing pages.</p>
+              </div>
+              <button onClick={openAddOccasion} className="flex items-center gap-2 px-4 py-2 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-medium transition-colors">
+                <Plus size={15} /> Add occasion
+              </button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {occasions.length === 0 ? (
+                <div className="col-span-full rounded-2xl border border-dashed border-gray-200 bg-white p-10 text-center text-gray-500">
+                  <Gift size={32} className="mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">No occasion buttons yet.</p>
+                </div>
+              ) : (
+                occasions.map((occasion) => (
+                  <div key={occasion.key} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-[#f5f1eb] flex items-center justify-center border border-[#e8e0d8] text-lg">
+                        {(() => {
+                          const normalized = occasion.icon?.trim() || '';
+                          if (!normalized) return <span className="text-gray-400">🎁</span>;
+                          if (normalized.startsWith('http') || normalized.startsWith('data:image')) {
+                            return <img src={normalized} alt={`${occasion.label} icon`} className="max-w-full max-h-full rounded" />;
+                          }
+                          const key = normalized.toLowerCase().replace(/^fa-/, '').replace('fa-brands ', '').replace('fa-solid ', '').replace(/[^a-z0-9]/g, '');
+                          const mappedIcon = iconNameMap[key] || faGift;
+                          if (normalized.includes('fa-') || iconNameMap[key]) {
+                            return <FontAwesomeIcon icon={mappedIcon} className="text-lg" />;
+                          }
+                          if (/^[\p{Extended_Pictographic}]$/u.test(normalized) || normalized.length <= 2) {
+                            return <span className="text-2xl">{normalized}</span>;
+                          }
+                          return <FontAwesomeIcon icon={faGift} className="text-lg" />;
+                        })()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{occasion.label}</p>
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500 mt-1">/{occasion.key}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setDeleteConfirm({ type: 'occasion', id: occasion.key, name: occasion.label })}
+                      className="p-2 rounded-lg bg-black/5 text-black hover:bg-black/10 transition-colors"
+                      aria-label={`Delete ${occasion.label}`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Slides view */}
         {activeView === 'slides' && (
           <div>
@@ -692,7 +893,7 @@ const Admin = () => {
               <button
                 onClick={openAddSlide}
                 disabled={slides.length >= 5}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium transition-colors hover:bg-red-700 disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-xl text-sm font-medium transition-colors hover:bg-gray-800 disabled:opacity-50"
               >
                 <Plus size={15} /> Add Slide
               </button>
@@ -716,7 +917,7 @@ const Admin = () => {
                       <p className="mt-4 text-xs uppercase tracking-[0.25em] text-red-600 font-semibold">{slide.button}</p>
                       <div className="mt-5 flex items-center gap-2">
                         <button onClick={() => openEditSlide(slide)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm hover:bg-gray-200 transition-colors">Edit</button>
-                        <button onClick={() => setDeleteConfirm({ type: 'slide', id: slide.id, name: slide.title })} className="px-3 py-2 bg-red-50 text-red-600 rounded-xl text-sm hover:bg-red-100 transition-colors">Delete</button>
+                        <button onClick={() => setDeleteConfirm({ type: 'slide', id: slide.id, name: slide.title })} className="px-3 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-800 transition-colors">Delete</button>
                       </div>
                     </div>
                   </div>
@@ -772,20 +973,20 @@ const Admin = () => {
             onClick={() => { setShowProductDrawer(false); cancelEdit(); }}
           />
           {/* Drawer */}
-          <div className="fixed top-0 right-0 z-50 h-full w-full max-w-lg bg-[#1c1c1e] border-l border-white/10 flex flex-col shadow-2xl overflow-hidden"
+          <div className="fixed top-0 right-0 z-50 h-full w-full max-w-lg bg-white border-l border-[#e8e0d8] flex flex-col shadow-[0_20px_60px_rgba(15,15,15,0.12)] overflow-hidden"
             style={{ animation: 'slideInRight 0.25s ease' }}
           >
             {/* Drawer header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 shrink-0">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-[#efe7df] shrink-0">
               <div className="flex items-center gap-3">
-                <span className={`w-9 h-9 rounded-xl flex items-center justify-center ${editingId ? 'bg-amber-500/15' : 'bg-[#c084b0]/15'}`}>
-                  {editingId ? <Pencil size={17} className="text-amber-400" /> : <PlusCircle size={17} className="text-[#c084b0]" />}
+                <span className={`w-9 h-9 rounded-xl flex items-center justify-center ${editingId ? 'bg-amber-100' : 'bg-[#f3efe8]'}`}>
+                  {editingId ? <Pencil size={17} className="text-amber-600" /> : <PlusCircle size={17} className="text-black" />}
                 </span>
-                <h3 className="font-semibold text-white">{editingId ? 'Edit Product' : 'Add New Product'}</h3>
+                <h3 className="font-semibold text-black">{editingId ? 'Edit Product' : 'Add New Product'}</h3>
               </div>
               <button
                 onClick={() => { setShowProductDrawer(false); cancelEdit(); }}
-                className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-colors"
+                className="p-2 rounded-lg text-gray-500 hover:text-black hover:bg-[#f5f1eb] transition-colors"
               >
                 <X size={18} />
               </button>
@@ -797,15 +998,15 @@ const Admin = () => {
 
                 {/* Category */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-2 flex items-center gap-1.5">
-                    <Folder size={13} className="text-[#c084b0]" /> Category <span className="text-red-400">*</span>
+                  <label className="block text-xs font-medium text-gray-600 mb-2 flex items-center gap-1.5">
+                    <Folder size={13} className="text-black" /> Category <span className="text-red-500">*</span>
                   </label>
                   {!showInlineCategoryInput ? (
                     <div className="flex gap-2">
                       <select
                         value={selectedCategoryId}
                         onChange={(e) => setSelectedCategoryId(e.target.value)}
-                        className="flex-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#c084b0] transition-colors"
+                        className="flex-1 px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm focus:outline-none focus:border-black transition-colors"
                         required
                       >
                         <option value="">Select a category</option>
@@ -814,25 +1015,25 @@ const Admin = () => {
                       <button
                         type="button"
                         onClick={() => setShowInlineCategoryInput(true)}
-                        className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-gray-300 text-xs hover:bg-white/10 transition-colors flex items-center gap-1"
+                        className="px-3 py-2 bg-[#f5f1eb] border border-[#e8e0d8] rounded-xl text-black text-xs hover:bg-[#efe8df] transition-colors flex items-center gap-1"
                       >
                         <FolderPlus size={14} /> New
                       </button>
                     </div>
                   ) : (
-                    <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+                    <div className="p-3 bg-[#f9f7f5] rounded-xl border border-[#e8e0d8]">
                       <div className="flex gap-2">
                         <input
                           type="text"
                           value={newCategoryName}
                           onChange={(e) => setNewCategoryName(e.target.value)}
                           placeholder="Category name..."
-                          className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[#c084b0] transition-colors"
+                          className="flex-1 px-3 py-2 bg-white border border-[#e8e0d8] rounded-lg text-black text-sm focus:outline-none focus:border-black transition-colors"
                         />
-                        <button type="button" onClick={handleCreateCategoryInline} disabled={categoryCreating || !newCategoryName.trim()} className="px-3 py-2 bg-[#9c6b8a] text-white rounded-lg text-xs font-medium disabled:opacity-50">
+                        <button type="button" onClick={handleCreateCategoryInline} disabled={categoryCreating || !newCategoryName.trim()} className="px-3 py-2 bg-black text-white rounded-lg text-xs font-medium disabled:opacity-50">
                           {categoryCreating ? 'Saving…' : 'Save'}
                         </button>
-                        <button type="button" onClick={() => { setShowInlineCategoryInput(false); setNewCategoryName(''); }} className="px-3 py-2 bg-white/5 text-gray-400 rounded-lg text-xs">
+                        <button type="button" onClick={() => { setShowInlineCategoryInput(false); setNewCategoryName(''); }} className="px-3 py-2 bg-[#f5f1eb] text-black rounded-lg text-xs">
                           Cancel
                         </button>
                       </div>
@@ -842,14 +1043,14 @@ const Admin = () => {
 
                 {/* Name */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-2">Product Name</label>
-                  <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g., Naruto Keychain" className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#c084b0] transition-colors" required />
+                  <label className="block text-xs font-medium text-gray-600 mb-2">Product Name</label>
+                  <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g., Naruto Keychain" className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors" required />
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-2">Description</label>
-                  <textarea value={productDescription} onChange={(e) => setProductDescription(e.target.value)} placeholder="Describe your product..." rows={3} className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#c084b0] transition-colors resize-y min-h-[80px]" required />
+                  <label className="block text-xs font-medium text-gray-600 mb-2">Description</label>
+                  <textarea value={productDescription} onChange={(e) => setProductDescription(e.target.value)} placeholder="Describe your product..." rows={3} className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors resize-y min-h-[80px]" required />
                 </div>
 
                 {/* Pricing */}
@@ -860,14 +1061,14 @@ const Admin = () => {
                     { label: 'Quantity', value: productQuantity, setter: setProductQuantity },
                   ].map(({ label, value, setter }) => (
                     <div key={label}>
-                      <label className="block text-xs font-medium text-gray-400 mb-2">{label}</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-2">{label}</label>
                       <div className="relative">
                         {label !== 'Quantity' && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">₹</span>}
                         <input
                           type="number"
                           value={value}
                           onChange={(e) => setter(e.target.value)}
-                          className={`w-full py-2.5 ${label !== 'Quantity' ? 'pl-7 pr-3' : 'px-3'} bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-[#c084b0] transition-colors`}
+                          className={`w-full py-2.5 ${label !== 'Quantity' ? 'pl-7 pr-3' : 'px-3'} bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm focus:outline-none focus:border-black transition-colors`}
                           min="0"
                           required
                         />
@@ -875,36 +1076,52 @@ const Admin = () => {
                     </div>
                   ))}
                 </div>
-                <div className="flex items-center gap-3 mt-2">
-                  <input
-                    id="new-arrival"
-                    type="checkbox"
-                    checked={productIsNewArrival}
-                    onChange={(e) => setProductIsNewArrival(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
-                  />
-                  <label htmlFor="new-arrival" className="text-sm text-gray-200">
-                    Mark as new arrival
-                  </label>
+                <div className="space-y-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Occasion (optional)</label>
+                    <select
+                      value={productOccasion}
+                      onChange={(e) => setProductOccasion(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm focus:outline-none focus:border-black transition-colors"
+                    >
+                      <option value="">No occasion</option>
+                      {occasions.map((occasion) => (
+                        <option key={occasion.key} value={occasion.key}>{occasion.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="new-arrival"
+                      type="checkbox"
+                      checked={productIsNewArrival}
+                      onChange={(e) => setProductIsNewArrival(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+                    />
+                    <label htmlFor="new-arrival" className="text-sm text-gray-700">
+                      Mark as new arrival
+                    </label>
+                  </div>
                 </div>
 
                 {/* Profit forecast */}
                 {productCostPrice && productSellingPrice && productQuantity && (
-                  <div className="bg-white/3 border border-white/8 rounded-xl p-4">
+                  <div className="bg-[#f8f5f2] border border-[#efe7df] rounded-xl p-4">
                     <p className="text-[10px] text-gray-500 mb-3 font-medium flex items-center gap-1 uppercase tracking-wider"><Lightbulb size={11} /> Profit Forecast</p>
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="p-2 bg-amber-500/10 rounded-lg"><p className="text-[9px] text-gray-500 mb-1">Investment</p><p className="text-sm font-bold text-amber-400">₹{(Number(productCostPrice) * Number(productQuantity)).toLocaleString()}</p></div>
-                      <div className="p-2 bg-blue-500/10 rounded-lg"><p className="text-[9px] text-gray-500 mb-1">Revenue</p><p className="text-sm font-bold text-blue-400">₹{(Number(productSellingPrice) * Number(productQuantity)).toLocaleString()}</p></div>
-                      <div className="p-2 bg-emerald-500/10 rounded-lg"><p className="text-[9px] text-gray-500 mb-1">Margin</p><p className="text-sm font-bold text-emerald-400">₹{((Number(productSellingPrice) - Number(productCostPrice)) * Number(productQuantity)).toLocaleString()}</p></div>
+                      <div className="p-2 bg-amber-100 rounded-lg"><p className="text-[9px] text-gray-600 mb-1">Investment</p><p className="text-sm font-bold text-amber-700">₹{(Number(productCostPrice) * Number(productQuantity)).toLocaleString()}</p></div>
+                      <div className="p-2 bg-blue-100 rounded-lg"><p className="text-[9px] text-gray-600 mb-1">Revenue</p><p className="text-sm font-bold text-blue-700">₹{(Number(productSellingPrice) * Number(productQuantity)).toLocaleString()}</p></div>
+                      <div className="p-2 bg-emerald-100 rounded-lg"><p className="text-[9px] text-gray-600 mb-1">Margin</p><p className="text-sm font-bold text-emerald-700">₹{((Number(productSellingPrice) - Number(productCostPrice)) * Number(productQuantity)).toLocaleString()}</p></div>
                     </div>
                   </div>
                 )}
 
                 {/* Image */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-2">Product Image</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-2">Product Image</label>
                   <div
-                    className="border-2 border-dashed border-white/10 rounded-xl p-5 text-center cursor-pointer hover:border-[#c084b0]/50 transition-colors"
+                    className="border-2 border-dashed border-[#e8e0d8] rounded-xl p-5 text-center cursor-pointer hover:border-black transition-colors"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
@@ -912,8 +1129,8 @@ const Admin = () => {
                       <img src={imagePreview} alt="Preview" className="max-h-[100px] mx-auto rounded-lg object-cover" />
                     ) : (
                       <>
-                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mb-2 mx-auto"><ImagePlus size={18} className="text-gray-500" /></div>
-                        <span className="text-xs text-gray-500">Click to upload image</span>
+                        <div className="w-10 h-10 rounded-xl bg-[#f5f1eb] flex items-center justify-center mb-2 mx-auto"><ImagePlus size={18} className="text-gray-600" /></div>
+                        <span className="text-xs text-gray-600">Click to upload image</span>
                       </>
                     )}
                   </div>
@@ -922,8 +1139,8 @@ const Admin = () => {
                 {/* Tags */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium text-gray-400">Product Tags</label>
-                    <button type="button" onClick={() => setShowTagModal(true)} className="text-[10px] text-[#c084b0] flex items-center gap-1 hover:underline">
+                    <label className="text-xs font-medium text-gray-600">Product Tags</label>
+                    <button type="button" onClick={() => setShowTagModal(true)} className="text-[10px] text-black flex items-center gap-1 hover:underline">
                       <Tag size={11} /> Manage Tags
                     </button>
                   </div>
@@ -933,7 +1150,7 @@ const Admin = () => {
                         key={tag}
                         type="button"
                         onClick={() => toggleProductTag(tag)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${productTags.includes(tag) ? 'bg-[#9c6b8a] text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${productTags.includes(tag) ? 'bg-black text-white' : 'bg-[#f5f1eb] text-gray-700 hover:bg-[#efe8df]'}`}
                       >
                         {tag}
                       </button>
@@ -946,9 +1163,9 @@ const Admin = () => {
             </div>
 
             {/* Drawer footer */}
-            <div className="px-6 py-4 border-t border-white/10 shrink-0 space-y-3">
+            <div className="px-6 py-4 border-t border-[#efe7df] shrink-0 space-y-3">
               {message.text && (
-                <p className={`p-3 text-xs rounded-xl ${message.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                <p className={`p-3 text-xs rounded-xl ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
                   {message.text}
                 </p>
               )}
@@ -956,7 +1173,7 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => { setShowProductDrawer(false); cancelEdit(); }}
-                  className="flex-1 py-2.5 bg-white/5 border border-white/10 text-gray-300 rounded-xl text-sm hover:bg-white/10 transition-colors"
+                  className="flex-1 py-2.5 bg-[#f5f1eb] border border-[#e8e0d8] text-black rounded-xl text-sm hover:bg-[#efe8df] transition-colors"
                 >
                   Cancel
                 </button>
@@ -964,7 +1181,7 @@ const Admin = () => {
                   type="submit"
                   form="product-form"
                   disabled={uploading}
-                  className="flex-1 py-2.5 bg-[#9c6b8a] hover:bg-[#b07898] text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                  className="flex-1 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   {uploading ? <Loader2 size={16} className="animate-spin" /> : editingId ? <Pencil size={15} /> : <Gift size={15} />}
                   {editingId ? 'Update Product' : 'Publish Product'}
@@ -983,7 +1200,7 @@ const Admin = () => {
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <LayoutGrid size={17} className="text-red-600" />
+                <LayoutGrid size={17} className="text-black" />
                 {editingCategoryId ? 'Edit Category' : 'New Category'}
               </h3>
               <button onClick={() => { setShowCategoryModal(false); resetCategoryForm(); }} className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"><X size={17} /></button>
@@ -991,31 +1208,31 @@ const Admin = () => {
             <form onSubmit={handleCategorySubmit} className="px-6 py-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1.5">Category Name</label>
+                  <label className="block text-xs text-gray-600 mb-1.5">Category Name</label>
                   <input
                     type="text"
                     value={categoryName}
                     onChange={(e) => { setCategoryName(e.target.value); if (!editingCategoryId) setCategorySlug(slugify(e.target.value)); }}
                     placeholder="e.g., Keychain"
-                    className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#c084b0] transition-colors"
+                    className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1.5">Slug</label>
+                  <label className="block text-xs text-gray-600 mb-1.5">Slug</label>
                   <input
                     type="text"
                     value={categorySlug}
                     onChange={(e) => setCategorySlug(e.target.value)}
                     placeholder="e.g., keychain"
-                    className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#c084b0] transition-colors"
+                    className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1.5">Cover Image</label>
+                <label className="block text-xs text-gray-600 mb-1.5">Cover Image</label>
                 <div
-                  className="border-2 border-dashed border-white/10 rounded-xl p-4 text-center cursor-pointer hover:border-[#c084b0]/50 transition-colors"
+                  className="border-2 border-dashed border-[#e8e0d8] rounded-xl p-4 text-center cursor-pointer hover:border-black transition-colors"
                   onClick={() => categoryCoverInputRef.current?.click()}
                 >
                   <input type="file" ref={categoryCoverInputRef} onChange={handleCategoryCoverChange} accept="image/*" className="hidden" />
@@ -1026,15 +1243,15 @@ const Admin = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="catActive" checked={categoryIsActive} onChange={(e) => setCategoryIsActive(e.target.checked)} className="rounded accent-[#9c6b8a]" />
-                <label htmlFor="catActive" className="text-sm text-gray-300">Active (visible on storefront)</label>
+                <input type="checkbox" id="catActive" checked={categoryIsActive} onChange={(e) => setCategoryIsActive(e.target.checked)} className="rounded accent-black" />
+                <label htmlFor="catActive" className="text-sm text-gray-700">Active (visible on storefront)</label>
               </div>
               {message.text && (
-                <p className={`p-3 text-xs rounded-xl ${message.type === 'success' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>{message.text}</p>
+                <p className={`p-3 text-xs rounded-xl ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{message.text}</p>
               )}
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => { setShowCategoryModal(false); resetCategoryForm(); }} className="flex-1 py-2.5 bg-white/5 border border-white/10 text-gray-300 rounded-xl text-sm hover:bg-white/10 transition-colors">Cancel</button>
-                <button type="submit" disabled={uploading} className="flex-1 py-2.5 bg-[#9c6b8a] hover:bg-[#b07898] text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
+                <button type="button" onClick={() => { setShowCategoryModal(false); resetCategoryForm(); }} className="flex-1 py-2.5 bg-[#f5f1eb] border border-[#e8e0d8] text-black rounded-xl text-sm hover:bg-[#efe8df] transition-colors">Cancel</button>
+                <button type="submit" disabled={uploading} className="flex-1 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
                   {uploading ? <Loader2 size={15} className="animate-spin" /> : editingCategoryId ? <Pencil size={15} /> : <FolderPlus size={15} />}
                   {editingCategoryId ? 'Update' : 'Create'}
                 </button>
@@ -1044,12 +1261,115 @@ const Admin = () => {
         </div>
       )}
 
+      {/* ── Occasion Modal ── */}
+      {showOccasionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/10 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md border border-gray-200 shadow-2xl overflow-hidden" style={{ animation: 'scaleIn 0.2s ease' }}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                <Gift size={17} className="text-black" />
+                New Occasion
+              </h3>
+              <button onClick={() => { setShowOccasionModal(false); setOccasionName(''); setOccasionKey(''); }} className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"><X size={17} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1.5">Occasion Name</label>
+                <input
+                  type="text"
+                  value={occasionName}
+                  onChange={(e) => setOccasionName(e.target.value)}
+                  placeholder="e.g., Birthday"
+                  className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-600 mb-1.5">Slug / URL key</label>
+                <input
+                  type="text"
+                  value={occasionKey}
+                  onChange={(e) => setOccasionKey(e.target.value)}
+                  placeholder="birthday"
+                  className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-600 mb-1.5">Icon</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {(['emoji', 'upload', 'fontawesome'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setOccasionIconMode(mode)}
+                      className={`px-2.5 py-1.5 rounded-full text-[11px] font-medium border ${occasionIconMode === mode ? 'bg-black text-white border-black' : 'bg-[#f5f1eb] text-black border-[#e8e0d8]'}`}
+                    >
+                      {mode === 'emoji' ? 'Emoji' : mode === 'upload' ? 'Upload Image' : 'Font Awesome'}
+                    </button>
+                  ))}
+                </div>
+
+                {occasionIconMode === 'emoji' && (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={occasionIcon}
+                      onChange={(e) => setOccasionIcon(e.target.value)}
+                      placeholder="🎉 or 😊"
+                      className="flex-1 px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
+                    />
+                    <div className="w-12 h-12 rounded-xl bg-[#f5f1eb] flex items-center justify-center border border-[#e8e0d8]">
+                      {renderOccasionIconPreview(occasionIcon)}
+                    </div>
+                  </div>
+                )}
+
+                {occasionIconMode === 'upload' && (
+                  <div className="flex items-center gap-2">
+                    <input type="file" accept="image/*" onChange={handleOccasionIconFile} className="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:bg-black file:text-white" />
+                    <div className="w-12 h-12 rounded-xl bg-[#f5f1eb] flex items-center justify-center border border-[#e8e0d8] overflow-hidden">
+                      {occasionIcon ? <img src={occasionIcon} alt="occasion icon preview" className="h-full w-full object-cover" /> : <span className="text-gray-400">🎁</span>}
+                    </div>
+                  </div>
+                )}
+
+                {occasionIconMode === 'fontawesome' && (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={occasionIcon}
+                      onChange={(e) => setOccasionIcon(e.target.value)}
+                      placeholder="whatsapp, instagram, gift, star, heart"
+                      className="flex-1 px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
+                    />
+                    <div className="w-12 h-12 rounded-xl bg-[#f5f1eb] flex items-center justify-center border border-[#e8e0d8]">
+                      {renderOccasionIconPreview(occasionIcon)}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {message.text && (
+                <p className={`p-3 text-xs rounded-xl ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{message.text}</p>
+              )}
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => { setShowOccasionModal(false); setOccasionName(''); setOccasionKey(''); }} className="flex-1 py-2.5 bg-[#f5f1eb] border border-[#e8e0d8] text-black rounded-xl text-sm hover:bg-[#efe8df] transition-colors">Cancel</button>
+                <button type="button" onClick={handleAddOccasion} className="flex-1 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                  <Gift size={15} /> Create
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Tags Modal ── */}
       {showTagModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/10 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-sm border border-gray-200 shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Tag size={16} className="text-red-600" /> Manage Tags</h3>
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Tag size={16} className="text-black" /> Manage Tags</h3>
               <button onClick={() => setShowTagModal(false)} className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"><X size={17} /></button>
             </div>
             <div className="px-6 py-5">
@@ -1060,15 +1380,16 @@ const Admin = () => {
                   onChange={(e) => setNewTagInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
                   placeholder="e.g., Anime, Metal..."
-                  className="flex-1 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#c084b0] transition-colors"
+                  className="flex-1 px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
                 />
-                <button onClick={handleAddTag} className="px-3 py-2 bg-[#9c6b8a] text-white rounded-xl text-sm font-medium flex items-center gap-1 hover:bg-[#b07898] transition-colors"><Plus size={15} /> Add</button>
+                <button onClick={handleAddTag} className="px-3 py-2 bg-black text-white rounded-xl text-sm font-medium flex items-center gap-1 hover:bg-gray-800 transition-colors"><Plus size={15} /> Add</button>
+               <button type="button" onClick={() => { setShowTagModal(false); setActiveView('slides'); setShowSlideEditor(true); }} className="px-3 py-2 bg-black text-white rounded-xl text-sm font-medium flex items-center gap-1 hover:bg-gray-800 transition-colors"><ImagePlus size={15} /> Create Slide</button>
               </div>
               <div className="max-h-52 overflow-auto space-y-1.5">
                 {tags.map((t) => (
-                  <div key={t} className="flex justify-between items-center px-3 py-2.5 bg-white/5 rounded-xl group">
-                    <span className="text-sm text-white/80">{t}</span>
-                    <button onClick={() => setDeleteConfirm({ type: 'tag', id: t, name: t })} className="text-gray-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={13} /></button>
+                  <div key={t} className="flex justify-between items-center px-3 py-2.5 bg-[#f9f7f5] rounded-xl group border border-[#efe7df]">
+                    <span className="text-sm text-black">{t}</span>
+                    <button onClick={() => setDeleteConfirm({ type: 'tag', id: t, name: t })} className="text-gray-500 hover:text-black transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={13} /></button>
                   </div>
                 ))}
               </div>
@@ -1098,8 +1419,9 @@ const Admin = () => {
                   else if (deleteConfirm.type === 'category') handleDeleteCategory(deleteConfirm.id);
                   else if (deleteConfirm.type === 'tag') handleDeleteTag(deleteConfirm.id);
                   else if (deleteConfirm.type === 'slide') handleDeleteSlide(deleteConfirm.id);
+                  else if (deleteConfirm.type === 'occasion') handleDeleteOccasion(deleteConfirm.id);
                 }}
-                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition-colors"
+                className="flex-1 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-semibold transition-colors"
               >
                 Delete
               </button>
@@ -1171,7 +1493,7 @@ const Admin = () => {
               )}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button type="button" onClick={cancelSlideEditor} className="flex-1 py-3 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
-                <button type="submit" className="flex-1 py-3 rounded-2xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors">
+                <button type="submit" className="flex-1 py-3 rounded-2xl bg-black text-white font-semibold hover:bg-gray-800 transition-colors">
                   {editingSlideId ? 'Update Slide' : 'Create Slide'}
                 </button>
               </div>

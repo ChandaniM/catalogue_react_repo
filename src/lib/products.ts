@@ -16,6 +16,7 @@ const applyProductDefaults = (product: Partial<Product>): Product => ({
   soldQuantity: product.soldQuantity ?? 0,
   tags: product.tags ?? [],
   categoryId: product.categoryId || '',
+  occasion: product.occasion ?? '',
   createdAt: product.createdAt || new Date().toISOString(),
   isNewArrival: product.isNewArrival ?? false,
   isDeal: product.isDeal ?? false,
@@ -33,6 +34,7 @@ const mapFromDb = (p: Record<string, unknown>): Product => applyProductDefaults(
   soldQuantity: p.sold_quantity as number | undefined,
   tags: (p.tags as string[]) || [],
   categoryId: (p.category_id as string) || '',
+  occasion: (p.occasion as string | undefined) || '',
   createdAt: (p.created_at as string) || new Date().toISOString(),
   isNewArrival: (p.is_new_arrival as boolean) ?? false,
   isDeal: (p.is_deal as boolean) ?? false,
@@ -129,6 +131,7 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product 
         quantity: product.quantity,
         tags: product.tags || [],
         category_id: product.categoryId,
+        occasion: product.occasion || null,
         is_new_arrival: product.isNewArrival ?? false,
       })
       .select()
@@ -163,6 +166,7 @@ export const updateProduct = async (
     if (updates.quantity !== undefined) supabaseUpdates.quantity = updates.quantity;
     if (updates.tags !== undefined) supabaseUpdates.tags = updates.tags;
     if (updates.categoryId !== undefined) supabaseUpdates.category_id = updates.categoryId;
+    if (updates.occasion !== undefined) supabaseUpdates.occasion = updates.occasion || null;
     if (updates.isNewArrival !== undefined) supabaseUpdates.is_new_arrival = updates.isNewArrival;
 
     const { data, error } = await supabase

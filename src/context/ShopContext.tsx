@@ -74,12 +74,44 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const getProductStock = (productId: string): number => {
+    if (typeof window === 'undefined') {
+      return 1;
+    }
+
+    try {
+      const storedProducts = localStorage.getItem('uphar_products');
+      if (!storedProducts) {
+        return 1;
+      }
+
+      const products = JSON.parse(storedProducts) as Array<{ id: string; quantity?: number }>;
+      const product = products.find((item) => item.id === productId);
+      return product?.quantity ?? 1;
+    } catch {
+      return 1;
+    }
+  };
+
+  const isProductSoldOut = (productId: string) => getProductStock(productId) <= 0;
+
   const addToCart = (productId: string, quantity = 1) => {
+    if (quantity <= 0 || isProductSoldOut(productId)) {
+      return;
+    }
+
     setCart((current) => {
+      const stock = getProductStock(productId);
       const existing = current.find((item) => item.productId === productId);
+      const newQuantity = existing ? existing.quantity + quantity : quantity;
+
+      if (stock <= 0 || newQuantity > stock) {
+        return current;
+      }
+
       if (existing) {
         return current.map((item) =>
-          item.productId === productId ? { ...item, quantity: item.quantity + quantity } : item
+          item.productId === productId ? { ...item, quantity: newQuantity } : item
         );
       }
       return [...current, { productId, quantity }];
@@ -87,9 +119,17 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateCartQuantity = (productId: string, quantity: number) => {
+    if (isProductSoldOut(productId)) {
+      setCart((current) => current.filter((item) => item.productId !== productId));
+      return;
+    }
+
+    const stock = getProductStock(productId);
+    const safeQuantity = Math.min(Math.max(quantity, 0), stock || 1);
+
     setCart((current) =>
       current
-        .map((item) => (item.productId === productId ? { ...item, quantity } : item))
+        .map((item) => (item.productId === productId ? { ...item, quantity: safeQuantity } : item))
         .filter((item) => item.quantity > 0)
     );
   };
@@ -99,6 +139,10 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const toggleCartItem = (productId: string) => {
+    if (isProductSoldOut(productId)) {
+      return;
+    }
+
     setCart((current) => {
       const existing = current.find((item) => item.productId === productId);
       if (existing) {

@@ -19,6 +19,7 @@ export interface Product {
   soldQuantity?: number;
   tags?: string[];
   categoryId: string;
+  occasion?: string;
   createdAt?: string;
   isNewArrival?: boolean;
   isDeal?: boolean;
@@ -36,6 +37,8 @@ export interface Slide {
 export interface Occasion {
   key: string;
   label: string;
+  // optional icon: either a single emoji (e.g. "🎉") or an image URL
+  icon?: string;
 }
 
 export interface AdminCredentials {
