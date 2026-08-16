@@ -46,7 +46,7 @@ const SelectedProductsSection = ({
   );
 
   const shareLink = getShareUrl(shareToken);
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`I selected these Uphar items:%0A${selectedProducts.map((item) => `• ${item.product.name} x${item.quantity}`).join("%0A")}%0A%0AView details: ${shareLink}`)}`;
+  const whatsappUrl = `https://wa.me/7700083352?text=${encodeURIComponent(`I selected these Uphar items:%0A${selectedProducts.map((item) => `• ${item.product.name} x${item.quantity}`).join("%0A")}%0A%0AView details: ${shareLink}`)}`;
 
   if (selectedProducts.length === 0) {
     return null;

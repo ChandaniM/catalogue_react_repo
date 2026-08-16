@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import Footer from '../components/Footer';
-import SearchBar from '../components/SearchBar';
 import ProductCard from '../components/ProductCard';
 import Loading from '../components/Loading';
 import { fetchProducts } from '../lib/products';
@@ -44,7 +43,7 @@ const ProductListingPage = ({ title, description, filter, hideIfDisabled = false
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
+      <div className="min-h-screen flex flex-col bg-[#fbf7f2]">
         <NavBar />
         <main className="flex-1 py-10">
           <div className="max-w-7xl mx-auto px-4">
@@ -58,7 +57,7 @@ const ProductListingPage = ({ title, description, filter, hideIfDisabled = false
 
   if (hideIfDisabled && disabledMessage) {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
+      <div className="min-h-screen flex flex-col bg-[#fbf7f2]">
         <NavBar />
         <main className="flex-1 py-10">
           <div className="max-w-7xl mx-auto px-4 text-center py-16">
@@ -73,18 +72,15 @@ const ProductListingPage = ({ title, description, filter, hideIfDisabled = false
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-[#fbf7f2]">
       <NavBar />
       <main className="flex-1 py-6 md:py-8 lg:py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-6 sm:mb-8 md:mb-10">
-            <h1 className="text-3xl sm:text-4xl font-semibold text-black mb-2">{title}</h1>
+            <h1 className="font-serif text-3xl sm:text-4xl text-[#222] mb-2">{title}</h1>
             {description && <p className="text-sm sm:text-base text-gray-600 max-w-3xl">{description}</p>}
           </div>
 
-          <div className="mb-6">
-            <SearchBar value={searchQuery} onChange={setSearchQuery} showChips={false} />
-          </div>
 
           {filtered.length === 0 ? (
             <div className="py-16 text-center">

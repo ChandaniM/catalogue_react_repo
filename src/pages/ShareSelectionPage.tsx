@@ -108,7 +108,7 @@ const ShareSelectionPage = () => {
               <div className="flex flex-wrap gap-3">
                 <button onClick={handleCopy} className="btn btn-secondary">Copy link</button>
                 {(typeof navigator.share === 'function') && <button onClick={handleNativeShare} className="btn btn-primary">Share</button>}
-                <a target="_blank" rel="noreferrer" href={`https://wa.me/?text=${encodeURIComponent(`Check out this Uphar selection: ${getShareUrl(selection.token)}`)}`} className="btn btn-whatsapp">WhatsApp</a>
+                <a target="_blank" rel="noreferrer" href={`https://wa.me/7700083352?text=${encodeURIComponent(`Check out this Uphar selection: ${getShareUrl(selection.token)}`)}`} className="btn btn-whatsapp">WhatsApp</a>
               </div>
             </div>
 

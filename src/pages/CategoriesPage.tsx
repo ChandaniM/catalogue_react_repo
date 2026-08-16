@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import Footer from '../components/Footer';
 import Loading from '../components/Loading';
-import SearchBar from '../components/SearchBar';
 import CategoryCard from '../components/CategoryCard';
 import { fetchCategories } from '../services/categories';
 import type { Category } from '../types';
@@ -11,7 +10,6 @@ import type { Category } from '../types';
 const CategoriesPage = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -28,18 +26,15 @@ const CategoriesPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-[#fbf7f2]">
       <NavBar />
       <main className="flex-1 py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-semibold text-black">Categories</h1>
+            <h1 className="font-serif text-3xl text-[#222]">Categories</h1>
             <p className="text-sm text-gray-600">Browse our curated product categories.</p>
           </div>
 
-          <div className="max-w-3xl mb-8">
-            <SearchBar value={searchTerm} onChange={setSearchTerm} showChips={false} />
-          </div>
 
           {loading ? (
             <Loading message="Loading categories..." />
@@ -50,12 +45,7 @@ const CategoriesPage = () => {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {categories
-                .filter((category) =>
-                  category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  category.slug.toLowerCase().includes(searchTerm.toLowerCase())
-                )
-                .map((category) => (
+              {categories.map((category) => (
                   <CategoryCard key={category.id} category={category} />
                 ))}
             </div>

@@ -13,6 +13,8 @@ import SearchPage from './pages/SearchPage';
 import Contact from './pages/Contact';
 import ProductListingPage from './pages/ProductListingPage';
 import ShareSelectionPage from './pages/ShareSelectionPage';
+import OccasionsPage from './pages/OccasionsPage';
+import OccasionDetailPage from './pages/OccasionDetailPage';
 
 function App() {
   return (
@@ -35,10 +37,12 @@ function App() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/add-product" element={<AddProduct />} />
          <Route path="/contact" element={<Contact />} />
+         <Route path="/occasions" element={<OccasionsPage />} />
+         <Route path="/occasions/:key" element={<OccasionDetailPage />} />
         </Routes>
       </div>
     </ShopProvider>
   );
 }
-
+ 
 export default App;

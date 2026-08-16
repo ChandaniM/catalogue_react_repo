@@ -1,31 +1,14 @@
-import { useEffect, useState } from 'react';
 import Footer from '../components/Footer';
 import ShippingBar from '../components/ShippingBar';
 import NavBar from '../components/NavBar';
 import HeroSlider from '../components/HeroSlider';
 import CategorySection from '../components/CategorySection';
-import SelectedProductsSection from '../components/SelectedProductsSection';
-import { useShop } from '../context/ShopContext';
-import type { Product } from '../types';
-import { fetchProducts } from '../lib/products';
+import OccasionsSection from '../components/OccasionsSection';
+import BestSellers from '../components/BestSellers';
+import PromoBanner from '../components/PromoBanner';
+// import WhyChooseUs from '../components/WhyChooseUs';
 
 const Catalogue = () => {
-  const { cart, wishlist } = useShop();
-  const [products, setProducts] = useState<Product[]>([]);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const productsData = await fetchProducts();
-        setProducts(productsData);
-      } catch (error) {
-        console.error('Error fetching catalogue data:', error);
-      }
-    };
-
-    loadData();
-  }, []);
-
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -35,7 +18,11 @@ const Catalogue = () => {
         {/* Hero slider with 3 slides */}
         <HeroSlider />
         <CategorySection />
-        <SelectedProductsSection products={products} cartItems={cart} wishlist={wishlist} />
+        <OccasionsSection />
+        <BestSellers />
+        <PromoBanner />
+        {/* <WhyChooseUs /> */}
+        {/* <NewsletterSection /> */}
       </main>
       <Footer />
     </div>

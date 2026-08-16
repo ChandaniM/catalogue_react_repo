@@ -110,25 +110,29 @@ header, footer {
     font-size: 15px;
   }
   
+  /* Primary: solid black with white text (global consistency) */
   &-primary {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    background: #111111;
     color: white;
-    box-shadow: 0 4px 14px rgba(17, 17, 17, 0.18);
-    
+    box-shadow: 0 6px 18px rgba(17, 17, 17, 0.12);
+    border: 1px solid rgba(0,0,0,0.08);
+
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(17, 17, 17, 0.22);
+      box-shadow: 0 8px 26px rgba(17, 17, 17, 0.16);
     }
   }
   
+  /* Secondary: white with black border */
   &-secondary {
     background: white;
     border: 2px solid #111111;
-    color: var(--accent);
+    color: #111111;
+    box-shadow: none;
     
     &:hover {
-      background: var(--cream);
-      border-color: var(--primary);
+      background: #faf9f8;
+      border-color: rgba(0,0,0,0.9);
     }
   }
   
@@ -142,7 +146,7 @@ header, footer {
       box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
     }
   }
-  
+
   &-danger {
     background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
     color: white;

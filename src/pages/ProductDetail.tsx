@@ -136,7 +136,7 @@ const ProductDetail = () => {
                   <i className="fas fa-shopping-cart" /> Add to cart
                 </button>
                 <a
-                  href={`https://wa.me/?text=${whatsappMessage}`}
+                  href={`https://wa.me/7700083352?text=${whatsappMessage}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn btn-whatsapp justify-center"

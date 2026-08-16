@@ -33,6 +33,11 @@ export interface Slide {
   image: string;
 }
 
+export interface Occasion {
+  key: string;
+  label: string;
+}
+
 export interface AdminCredentials {
   email: string;
   password: string;

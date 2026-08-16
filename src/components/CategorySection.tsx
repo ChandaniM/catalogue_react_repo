@@ -5,7 +5,6 @@ import { fetchCategories } from '../services/categories';
 import type { Category } from '../types';
 
 const CategorySection = () => {
-  const [showAll, setShowAll] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -14,9 +13,6 @@ const CategorySection = () => {
       try {
         const items = await fetchCategories(true);
         setCategories(items);
-        console.log('Fetched categories:', items);
-        console.log('fetching usestates of categories' , categories);
-        
       } catch (error) {
         console.error('Error loading categories:', error);
       } finally {
@@ -31,12 +27,12 @@ const CategorySection = () => {
     <section className="max-w-7xl mx-auto px-6 mt-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-gray-500 mb-2">Browse by Product</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-gray-500 mb-2">Browse by category</p>
           <h2 className="text-xl font-semibold text-black">Shop by category</h2>
         </div>
-        <button className="inline-flex items-center gap-2 text-sm font-semibold uppercase text-gray-700 cursor-pointer" >
-          View all <ArrowRight size={16} onClick={() => setShowAll(true)}/>
-        </button>
+        <a href="/categories" className="inline-flex items-center gap-2 text-sm font-semibold uppercase text-gray-700">
+          View all <ArrowRight size={16} />
+        </a>
       </div>
 
       {loading ? (
@@ -47,11 +43,9 @@ const CategorySection = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {categories
-            .slice(0, showAll ? categories.length : 4)
-            .map((category) => (
-              <CategoryCard key={category.id} category={category} />
-            ))}
+          {categories.slice(0, 4).map((category) => (
+            <CategoryCard key={category.id} category={category} />
+          ))}
         </div>
       )}
     </section>
