@@ -20,6 +20,7 @@ export interface Product {
   tags?: string[];
   categoryId: string;
   occasion?: string;
+  occasionId?: string | null;
   createdAt?: string;
   isNewArrival?: boolean;
   isDeal?: boolean;

@@ -17,6 +17,7 @@ const applyProductDefaults = (product: Partial<Product>): Product => ({
   tags: product.tags ?? [],
   categoryId: product.categoryId || '',
   occasion: product.occasion ?? '',
+  occasionId: product.occasionId ?? null,
   createdAt: product.createdAt || new Date().toISOString(),
   isNewArrival: product.isNewArrival ?? false,
   isDeal: product.isDeal ?? false,
@@ -35,6 +36,7 @@ const mapFromDb = (p: Record<string, unknown>): Product => applyProductDefaults(
   tags: (p.tags as string[]) || [],
   categoryId: (p.category_id as string) || '',
   occasion: (p.occasion as string | undefined) || '',
+  occasionId: (p.occasion_id as string | null | undefined) ?? null,
   createdAt: (p.created_at as string) || new Date().toISOString(),
   isNewArrival: (p.is_new_arrival as boolean) ?? false,
   isDeal: (p.is_deal as boolean) ?? false,
@@ -120,20 +122,22 @@ export const fetchProductById = async (id: string): Promise<Product | null> => {
 
 export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product | null> => {
   if (isSupabaseConfigured() && supabase) {
+    const payload: Record<string, unknown> = {
+      name: product.name,
+      description: product.description,
+      image_url: product.image_url,
+      cost_price: product.costPrice,
+      selling_price: product.sellingPrice,
+      quantity: product.quantity,
+      tags: product.tags || [],
+      category_id: product.categoryId,
+      occasion_id: product.occasionId ?? null,
+      is_new_arrival: product.isNewArrival ?? false,
+    };
+
     const { data, error } = await supabase
       .from('products')
-      .insert({
-        name: product.name,
-        description: product.description,
-        image_url: product.image_url,
-        cost_price: product.costPrice,
-        selling_price: product.sellingPrice,
-        quantity: product.quantity,
-        tags: product.tags || [],
-        category_id: product.categoryId,
-        occasion: product.occasion || null,
-        is_new_arrival: product.isNewArrival ?? false,
-      })
+      .insert(payload)
       .select()
       .single();
 
@@ -166,7 +170,7 @@ export const updateProduct = async (
     if (updates.quantity !== undefined) supabaseUpdates.quantity = updates.quantity;
     if (updates.tags !== undefined) supabaseUpdates.tags = updates.tags;
     if (updates.categoryId !== undefined) supabaseUpdates.category_id = updates.categoryId;
-    if (updates.occasion !== undefined) supabaseUpdates.occasion = updates.occasion || null;
+    if (updates.occasionId !== undefined) supabaseUpdates.occasion_id = updates.occasionId ?? null;
     if (updates.isNewArrival !== undefined) supabaseUpdates.is_new_arrival = updates.isNewArrival;
 
     const { data, error } = await supabase

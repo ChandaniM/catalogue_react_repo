@@ -10,7 +10,6 @@ interface SimpleProductCardProps {
 
 const SimpleProductCard = ({ product, cartQuantity, onAddToCart }: SimpleProductCardProps) => {
   const imageUrl = product.image || product.image_url || '';
-  const price = product.sellingPrice || product.price || 0;
   const showNewTag = isProductNewArrival(product, 7);
 
   return (
@@ -23,13 +22,12 @@ const SimpleProductCard = ({ product, cartQuantity, onAddToCart }: SimpleProduct
 
         <div className="p-3">
           <div className="text-sm font-medium text-black hover:underline">{product.name}</div>
-          <div className="text-sm font-semibold mt-1 text-black">₹{price}</div>
           {cartQuantity > 0 && (
             <div className="mt-2 text-xs text-gray-500">In cart: {cartQuantity} item{cartQuantity > 1 ? 's' : ''}</div>
           )}
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onAddToCart(product.id); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddToCart(product.id); }}
             className={`mt-4 flex w-full items-center justify-center gap-2 rounded-sm border px-3 py-2 text-sm font-semibold transition ${cartQuantity > 0 ? 'border-black bg-black text-white' : 'border-gray-200 bg-white text-black hover:border-black hover:bg-black hover:text-white'}`}
           >
             <ShoppingCart size={16} />

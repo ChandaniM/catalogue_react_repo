@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWhatsapp } from '@fortawesome/free-brands-svg-icons';
 import NavBar from '../components/NavBar';
 import Footer from '../components/Footer';
 import Loading from '../components/Loading';
@@ -10,13 +8,14 @@ import { fetchProductById } from '../lib/products';
 import { fetchCategories } from '../services/categories';
 import { useShop } from '../context/ShopContext';
 
+// Icons
+import { FaWhatsapp, FaInstagram, FaShieldAlt, FaLeaf, FaStar, FaGift, FaShoppingCart } from 'react-icons/fa';
+
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
-  const { addToCart } = useShop();
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -42,20 +41,61 @@ const ProductDetail = () => {
     loadProduct();
   }, [id]);
 
-  const copyLink = () => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
+  const { addToCart } = useShop();
+
+  const getCartSummaryText = (): string => {
+    try {
+      const storedProducts = localStorage.getItem('uphar_products');
+      const storedCart = localStorage.getItem('uphar_cart');
+      const products = storedProducts ? JSON.parse(storedProducts) : [];
+      const cartItems = storedCart ? JSON.parse(storedCart) : [];
+
+      if (!cartItems || cartItems.length === 0) {
+        return `${product?.name || ''} - ${window.location.href}`;
+      }
+
+      const lines = cartItems.map((item: any) => {
+        const p = products.find((x: any) => x.id === item.productId);
+        return `${p?.name || item.productId} x${item.quantity}`;
+      });
+
+      return `My cart from Uphar:\n${lines.join('\n')}\n\nView cart: ${window.location.origin}/cart`;
+    } catch (err) {
+      return `${product?.name || ''} - ${window.location.href}`;
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
-  const whatsappMessage = product
-    ? encodeURIComponent(
-        `Hi! I'm interested in "${product.name}" from Uphar The Gift Shop. Can you please share more details?\n\nProduct Link: ${window.location.href}`
-      )
-    : '';
-  const isSoldOut = (product?.quantity ?? 1) <= 0;
+  const shareWhatsApp = () => {
+    const text = encodeURIComponent(getCartSummaryText());
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
+  const shareInstagram = async () => {
+    const url = window.location.href;
+    const text = `${product?.name || ''} \n${url}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: product?.name, text, url });
+      } catch (err) {
+        // ignore
+      }
+      return;
+    }
+
+    // fallback: copy to clipboard and open instagram homepage
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(`${text}\n\n(Shared from Uphar)`);
+      alert('Link copied to clipboard. Paste it in Instagram to share.');
+      window.open('https://www.instagram.com/', '_blank');
+    } else {
+      window.open('https://www.instagram.com/', '_blank');
+    }
+  };
+
+  // remove copied state unused
+
+
 
   if (loading) {
     return (
@@ -106,73 +146,124 @@ const ProductDetail = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-8 lg:gap-10 xl:gap-12 items-start">
             <div className="flex justify-center lg:justify-start">
-              <div className="w-full max-w-[540px] overflow-hidden rounded-[22px] bg-[#f4f0eb]">
+              <div className="w-full max-w-[540px] overflow-hidden">
                 <img
                   src={product.image_url}
                   alt={product.name}
-                  className="w-full aspect-[4/4.3] lg:aspect-[1/1.1] object-cover"
+                  className="w-full max-h-[560px] object-contain"
                 />
               </div>
             </div>
 
-            <div className="bg-white p-5 sm:p-6 md:p-7">
+            <div className="p-6 md:p-8">
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                {product.isNewArrival && (
-                  <span className="inline-flex items-center rounded-full bg-black px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-white uppercase">
-                    New
-                  </span>
-                )}
                 {category && (
-                  <span className="inline-flex items-center rounded-full border border-[#e8e0d8] bg-[#f9f7f4] px-2.5 py-1 text-[10px] font-medium tracking-[0.15em] text-gray-700 uppercase">
+                  <span className="inline-flex items-center rounded-full border border-[#f1e9e2] bg-[#fff6f2] px-3 py-1 text-[11px] font-semibold tracking-[0.15em] text-[#d9735b] uppercase">
                     {category.name}
                   </span>
                 )}
               </div>
 
-              <h1 className="font-display text-3xl sm:text-4xl md:text-[2.7rem] font-semibold text-black leading-none tracking-[-0.04em] text-balance">
+              <h1 className="font-display text-3xl sm:text-4xl md:text-[2.25rem] font-extrabold text-black leading-tight">
                 {product.name}
               </h1>
 
-              <div className="mt-5 flex flex-wrap items-end gap-3">
-                <span className="text-3xl sm:text-4xl font-semibold text-black">₹{product.sellingPrice}</span>
-                {product.costPrice > 0 && product.costPrice !== product.sellingPrice && (
-                  <span className="text-lg text-gray-400 line-through">₹{product.costPrice}</span>
-                )}
-              </div>
+              <p className="mt-4 text-gray-600 max-w-xl">{product.description}</p>
 
-              <div className="mt-6 space-y-4 text-sm sm:text-base text-gray-700">
-                <div className="flex items-center gap-2">
+              <div className="mt-6">
+                <div className="flex items-center gap-3">
                   <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                  <span>{(product.quantity ?? 0) > 0 ? 'In stock and ready to ship' : 'Currently unavailable'}</span>
+                  <span className="font-medium text-gray-700">{(product.quantity ?? 0) > 0 ? 'In stock' : 'Out of stock'}</span>
                 </div>
-                <p className="leading-relaxed text-gray-600">{product.description}</p>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="flex items-center gap-3">
+                    <FaShieldAlt className="text-[22px] text-[#9b6b4f]" />
+                    <div>
+                      <div className="text-sm font-semibold">Premium Quality</div>
+                      <div className="text-xs text-gray-500">Handpicked materials</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <FaLeaf className="text-[20px] text-[#60a86b]" />
+                    <div>
+                      <div className="text-sm font-semibold">Non-Toxic Material</div>
+                      <div className="text-xs text-gray-500">Safe for kids</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <FaStar className="text-[20px] text-[#f5c84a]" />
+                    <div>
+                      <div className="text-sm font-semibold">Finely Detailed</div>
+                      <div className="text-xs text-gray-500">Precise finishing</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <FaGift className="text-[20px] text-[#d9735b]" />
+                    <div>
+                      <div className="text-sm font-semibold">Perfect for Gifting</div>
+                      <div className="text-xs text-gray-500">Ready to wrap</div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-8 grid sm:flex-row sm:items-center gap-4">
+                <div className="grid gap-3 w-full sm:w-auto grid-cols-2">
+                  <button onClick={() => shareWhatsApp()} className="btn btn-whatsapp btn-lg inline-flex items-center gap-3 w-full sm:w-auto justify-center">
+                    <FaWhatsapp className="text-lg" />
+                    <span className="text-sm">WhatsApp</span>
+                  </button>
+
+                  <button onClick={() => shareInstagram()} className="btn btn-secondary btn-lg inline-flex items-center gap-3 w-full sm:w-auto justify-center">
+                    <FaInstagram className="text-lg" />
+                    <span className="text-sm">Instagram</span>
+                  </button>
+                </div>
                 <button
                   type="button"
-                  onClick={() => !isSoldOut && addToCart(product.id)}
-                  disabled={isSoldOut}
-                  className="btn btn-primary flex-1 justify-center disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => addToCart(product.id)}
+                  className="btn btn-primary btn-lg w-full sm:w-auto inline-flex items-center gap-3 justify-center"
                 >
-                  {isSoldOut ? 'Sold out' : 'Add to cart'}
+                  <FaShoppingCart className="text-lg" />
+                  <span className="text-sm">Add to cart</span>
                 </button>
-                <a
-                  href={`https://wa.me/7700083352?text=${whatsappMessage}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-whatsapp flex-1 justify-center"
-                >
-                  <FontAwesomeIcon icon={faWhatsapp} /> WhatsApp
-                </a>
+
               </div>
 
-              <button onClick={copyLink} className="btn btn-secondary mt-3 w-full justify-center">
-                <span className="text-base">{copied ? '✓' : '⧉'}</span>
-                {copied ? 'Copied link' : 'Copy product link'}
-              </button>
+              <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[#fff6f2] rounded-2xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-box-icon lucide-box"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div>
+                  <div>
+                    <div className="text-sm font-semibold">Secure Packaging</div>
+                    <div className="text-xs text-gray-500">Safe & damage-proof</div>
+                  </div>
+                </div>
 
-              <div className="mt-8 rounded-2xl bg-[#faf7f3] p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check-icon lucide-check"><path d="M20 6 9 17l-5-5"/></svg></div>
+                  <div>
+                    <div className="text-sm font-semibold">Authentic Product</div>
+                    <div className="text-xs text-gray-500">100% Original</div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-truck-icon lucide-truck"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold">Pan India Delivery</div>
+                    <div className="text-xs text-gray-500">Across 10000+ pin codes</div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* <div className="mt-8 rounded-2xl bg-[#faf7f3] p-4 sm:p-5">
                 <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">Product details</h2>
                 <div className="mt-4 space-y-3 text-sm text-gray-700">
                   <div className="flex items-center justify-between gap-4 border-b border-[#efe7df] pb-3">
@@ -188,7 +279,7 @@ const ProductDetail = () => {
                     <span className="font-medium text-black">{product.tags?.length ? product.tags.join(', ') : 'Curated pick'}</span>
                   </div>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

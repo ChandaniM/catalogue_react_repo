@@ -12,7 +12,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const isSoldOut = (product.quantity ?? 0) <= 0;
 
   return (
-    <div className="product-card block bg-white rounded-xl sm:rounded-2xl md:rounded-3xl overflow-hidden shadow-md hover:shadow-2xl hover:-translate-y-1 md:hover:-translate-y-2 transition-all duration-300 border-2 border-transparent hover:border-[var(--primary)]">
+    <div className="product-card block bg-white rounded-xl sm:rounded-2xl md:rounded-3xl overflow-hidden shadow-md hover:shadow-2xl hover:-translate-y-1 md:hover:-translate-y-2 transition-all duration-300 border-2 border-transparent">
       <Link to={`/product/${product.id}`} className="no-underline">
         <div className="relative overflow-hidden aspect-square">
           <img
@@ -29,7 +29,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
               </span>
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[var(--primary-dark)]/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
+          
         </div>
       </Link>
 
@@ -42,11 +42,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
         </p>
 
         <div className="mt-4 flex items-center justify-between">
-          <div className="text-lg font-semibold text-[var(--charcoal)]">₹{product.sellingPrice}</div>
+          {/* <div className="text-lg font-semibold text-[var(--charcoal)]">₹{product.sellingPrice}</div> */}
           <button
             onClick={() => !isSoldOut && addToCart(product.id)}
             disabled={isSoldOut}
-            className="btn btn-primary inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn w-full btn-primary inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
           >
             <ShoppingCart size={14} /> {isSoldOut ? 'Sold out' : 'Add'}
           </button>

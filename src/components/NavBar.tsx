@@ -1,4 +1,4 @@
-import { Search, ShoppingBag, ChevronDown, Heart, X } from 'lucide-react';
+import { Search, ShoppingBag, ChevronDown,  X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
 import { useEffect, useState } from 'react';
@@ -85,10 +85,6 @@ const NavBar: React.FC = () => {
 
             <button type="button" className="lg:hidden p-2 text-black">
               <Search size={18} />
-            </button>
-
-            <button type="button" className="p-2 text-black">
-              <Heart size={18} />
             </button>
 
             <Link to="/cart" className="relative inline-flex items-center justify-center p-2 text-black">
