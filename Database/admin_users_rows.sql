@@ -1,0 +1,1 @@
+INSERT INTO "public"."admin_users" ("id", "email", "password", "created_at") VALUES ('b5034d3a-987b-49bb-995f-749cab134abd', 'upharaps26@gmail.com', '$2a$06$85tTkxe9h1qusuG9eZ7B2.z87yCHZKC4a4h3mwhS8aVb5bcoQGaIO', '2026-05-20 16:52:40.370139+00');

@@ -5,7 +5,26 @@ import type { Product } from '../types';
 const LOCAL_STORAGE_KEY = 'uphar_products';
 const MIGRATION_KEY = 'uphar_products_migrated_v3';
 
-const mapFromDb = (p: Record<string, unknown>): Product => ({
+const applyProductDefaults = (product: Partial<Product>): Product => ({
+  id: product.id || String(Date.now()),
+  name: product.name || '',
+  description: product.description || '',
+  image_url: product.image_url || '',
+  costPrice: product.costPrice ?? 0,
+  sellingPrice: product.sellingPrice ?? 0,
+  quantity: product.quantity ?? 0,
+  soldQuantity: product.soldQuantity ?? 0,
+  tags: product.tags ?? [],
+  categoryId: product.categoryId || '',
+  occasion: product.occasion ?? '',
+  occasionId: product.occasionId ?? null,
+  createdAt: product.createdAt || new Date().toISOString(),
+  isNewArrival: product.isNewArrival ?? false,
+  isDeal: product.isDeal ?? false,
+  isPreOrder: product.isPreOrder ?? false,
+});
+
+const mapFromDb = (p: Record<string, unknown>): Product => applyProductDefaults({
   id: p.id as string,
   name: p.name as string,
   description: p.description as string,
@@ -13,8 +32,15 @@ const mapFromDb = (p: Record<string, unknown>): Product => ({
   costPrice: p.cost_price as number,
   sellingPrice: p.selling_price as number,
   quantity: p.quantity as number | undefined,
+  soldQuantity: p.sold_quantity as number | undefined,
   tags: (p.tags as string[]) || [],
   categoryId: (p.category_id as string) || '',
+  occasion: (p.occasion as string | undefined) || '',
+  occasionId: (p.occasion_id as string | null | undefined) ?? null,
+  createdAt: (p.created_at as string) || new Date().toISOString(),
+  isNewArrival: (p.is_new_arrival as boolean) ?? false,
+  isDeal: (p.is_deal as boolean) ?? false,
+  isPreOrder: (p.is_preorder as boolean) ?? false,
 });
 
 const getLocalProducts = (): Product[] => {
@@ -22,16 +48,23 @@ const getLocalProducts = (): Product[] => {
   let products: Product[];
 
   if (stored) {
-    products = JSON.parse(stored);
+    try {
+      products = JSON.parse(stored).map((product: Partial<Product>) => applyProductDefaults(product));
+    } catch (err) {
+      console.warn('Invalid local product cache, reseeding dummy products.', err);
+      products = DUMMY_PRODUCTS.map((product) => applyProductDefaults(product));
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
+    }
   } else {
-    products = DUMMY_PRODUCTS;
+    products = DUMMY_PRODUCTS.map((product) => applyProductDefaults(product));
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
   }
 
   if (!localStorage.getItem(MIGRATION_KEY)) {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DUMMY_PRODUCTS));
+    const seeded = DUMMY_PRODUCTS.map((product) => applyProductDefaults(product));
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(seeded));
     localStorage.setItem(MIGRATION_KEY, 'true');
-    return DUMMY_PRODUCTS;
+    return seeded;
   }
 
   return products;
@@ -39,6 +72,15 @@ const getLocalProducts = (): Product[] => {
 
 const saveLocalProducts = (products: Product[]) => {
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
+};
+
+export const isProductNewArrival = (product: Product, autoDays = 7): boolean => {
+  if (product.isNewArrival) return true;
+  if (!product.createdAt) return false;
+  const createdDate = new Date(product.createdAt);
+  const threshold = new Date();
+  threshold.setDate(threshold.getDate() - autoDays);
+  return createdDate >= threshold;
 };
 
 export const fetchProducts = async (): Promise<Product[]> => {
@@ -80,18 +122,23 @@ export const fetchProductById = async (id: string): Promise<Product | null> => {
 
 export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product | null> => {
   if (isSupabaseConfigured() && supabase) {
+    const payload: Record<string, unknown> = {
+      name: product.name,
+      description: product.description,
+      image_url: product.image_url,
+      cost_price: product.costPrice,
+      selling_price: product.sellingPrice,
+      quantity: product.quantity,
+      sold_quantity: product.soldQuantity ?? 0,
+      tags: product.tags || [],
+      category_id: product.categoryId,
+      occasion_id: product.occasionId ?? null,
+      is_new_arrival: product.isNewArrival ?? false,
+    };
+
     const { data, error } = await supabase
       .from('products')
-      .insert({
-        name: product.name,
-        description: product.description,
-        image_url: product.image_url,
-        cost_price: product.costPrice,
-        selling_price: product.sellingPrice,
-        quantity: product.quantity,
-        tags: product.tags || [],
-        category_id: product.categoryId,
-      })
+      .insert(payload)
       .select()
       .single();
 
@@ -122,8 +169,11 @@ export const updateProduct = async (
     if (updates.costPrice !== undefined) supabaseUpdates.cost_price = updates.costPrice;
     if (updates.sellingPrice !== undefined) supabaseUpdates.selling_price = updates.sellingPrice;
     if (updates.quantity !== undefined) supabaseUpdates.quantity = updates.quantity;
+    if (updates.soldQuantity !== undefined) supabaseUpdates.sold_quantity = updates.soldQuantity;
     if (updates.tags !== undefined) supabaseUpdates.tags = updates.tags;
     if (updates.categoryId !== undefined) supabaseUpdates.category_id = updates.categoryId;
+    if (updates.occasionId !== undefined) supabaseUpdates.occasion_id = updates.occasionId ?? null;
+    if (updates.isNewArrival !== undefined) supabaseUpdates.is_new_arrival = updates.isNewArrival;
 
     const { data, error } = await supabase
       .from('products')
