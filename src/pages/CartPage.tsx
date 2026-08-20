@@ -36,8 +36,6 @@ const CartPage = () => {
     [cart, products]
   );
 
-  const total = cartItems.reduce((sum, item) => sum + (item.product?.sellingPrice || 0) * item.quantity, 0);
-
   const [showDetailsForm, setShowDetailsForm] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
