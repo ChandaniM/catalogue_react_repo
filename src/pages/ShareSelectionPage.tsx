@@ -126,8 +126,8 @@ const ShareSelectionPage = () => {
                       </div>
                       <div className="text-sm text-gray-600">
                         <p>Quantity: {item.quantity}</p>
-                        <p>Price: ₹{product.sellingPrice.toFixed(0)}</p>
-                        <p>Total: ₹{(product.sellingPrice * item.quantity).toFixed(0)}</p>
+                        {/* <p>Price: ₹{product.sellingPrice.toFixed(0)}</p> */}
+                        {/* <p>Total: ₹{(product.sellingPrice * item.quantity).toFixed(0)}</p> */}
                         <a href={`/product/${product.id}`} className="text-sm text-black underline mt-2 inline-block">View product</a>
                       </div>
                     </div>

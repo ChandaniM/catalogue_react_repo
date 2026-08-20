@@ -1,47 +1,37 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-
-const slides = [
-  {
-    id: 1,
-    title: 'Gifts made for every kind of moment.',
-    subtitle: 'Thoughtful gifts. Beautifully packed. Made to make memories last.',
-    cta: { label: 'Shop now', to: '/shop' },
-    secondary: { label: 'Pre-order', to: '/pre-orders' },
-    bg: 'bg-[#f3eee7]',
-    image: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    id: 2,
-    title: 'Curated gifting for every celebration.',
-    subtitle: 'Fresh arrivals designed to make each occasion feel special.',
-    cta: { label: 'New arrivals', to: '/new-arrivals' },
-    secondary: { label: 'Browse categories', to: '/categories' },
-    bg: 'bg-[#f8f1ee]',
-    image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=900&q=80',
-  },
-  {
-    id: 3,
-    title: 'Handmade delight, thoughtfully packed.',
-    subtitle: 'Premium gifting essentials for joyful moments and warm memories.',
-    cta: { label: 'Shop gifts', to: '/shop' },
-    secondary: { label: 'Pre-order now', to: '/pre-orders' },
-    bg: 'bg-[#f7f0eb]',
-    image: 'https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=900&q=80',
-  },
-];
+import { fetchSlides } from '../lib/slides';
+import type { Slide } from '../types';
 
 const HeroSlider: React.FC = () => {
+  const [slides, setSlides] = useState<Slide[]>([]);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
+    const loadSlides = async () => {
+      const slideData = await fetchSlides();
+      setSlides(slideData);
+    };
+
+    loadSlides();
+  }, []);
+
+  useEffect(() => {
+    if (!slides.length) return;
+
     const timer = setInterval(() => {
       setIndex((i) => (i + 1) % slides.length);
     }, 5000);
-    return () => clearInterval(timer);
-  }, []);
 
-  const goto = (i: number) => setIndex((i % slides.length + slides.length) % slides.length);
+    return () => clearInterval(timer);
+  }, [slides]);
+
+  const goto = (i: number) => {
+    if (!slides.length) return;
+    setIndex((i % slides.length + slides.length) % slides.length);
+  };
+
+  if (!slides.length) return null;
 
   return (
     <section className="w-full bg-[#f5efe9]">
@@ -52,25 +42,23 @@ const HeroSlider: React.FC = () => {
             className={`transition-opacity duration-700 ease-in-out ${i === index ? 'opacity-100' : 'opacity-0'} absolute inset-0 w-full`}
             style={{ pointerEvents: i === index ? 'auto' : 'none' }}
           >
-            <div className={`w-full h-[500px] ${slide.bg}`}>
+            <div className="w-full min-h-[680px] lg:h-[500px] lg:min-h-0 bg-[#f3eee7]">
               <div className="max-w-[1600px] mx-auto h-full px-4 sm:px-6 lg:px-8">
-                <div className="grid h-full items-center gap-8 lg:grid-cols-[1.1fr_1fr]">
-                  <div className="pt-10 pb-14 max-w-xl">
+                <div className="grid h-full items-center gap-5 lg:gap-8 lg:grid-cols-[1.1fr_1fr]">
+                  <div className=" order-2 max-w-xl px-2 pb-16 pt-2 sm:px-4 sm:pb-14 sm:pt-6 lg:order-1 lg:px-0 lg:py-10" style={{ marginLeft: '1rem'}}>
                     <p className="text-[0.7rem] uppercase tracking-[0.32em] text-gray-600 mb-4">Thoughtfully curated gifts</p>
-                    <h2 className="font-serif text-4xl sm:text-5xl lg:text-[4rem] leading-[0.95] tracking-[-0.05em] text-black mb-5">{slide.title}</h2>
-                    <p className="text-base text-gray-700 leading-relaxed mb-7">{slide.subtitle}</p>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Link to={slide.cta.to} className="inline-flex rounded-full bg-black px-5 py-3 text-sm font-semibold uppercase tracking-wide text-white">
-                        {slide.cta.label} →
-                      </Link>
-                      <Link to={slide.secondary.to} className="inline-flex rounded-full border border-black bg-white px-5 py-3 text-sm font-semibold uppercase tracking-wide text-black">
-                        {slide.secondary.label}
-                      </Link>
-                    </div>
+                    <h2 className="font-serif text-3xl leading-[0.98] tracking-[-0.03em] text-black mb-4 sm:mb-5 sm:text-5xl lg:text-[4rem]">{slide.title}</h2>
+                    <p className="text-sm text-gray-700 leading-relaxed mb-5 sm:mb-7 sm:text-base">{slide.subtitle}</p>
+                    {(slide.button || slide.button2) && (
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        {slide.button && <Link to={slide.buttonUrl || "/shop"} className="inline-flex rounded-full bg-black px-4 py-2.5 text-xs font-semibold uppercase tracking-wide sm:px-5 sm:py-3 sm:text-sm text-white">{slide.button} →</Link>}
+                        {slide.button2 && <Link to={slide.button2Url || "/shop"} className="inline-flex rounded-full border border-black px-4 py-2.5 text-xs font-semibold uppercase tracking-wide sm:px-5 sm:py-3 sm:text-sm text-black">{slide.button2} →</Link>}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex h-full items-center justify-center">
-                    <div className="relative h-[360px] w-full max-w-[620px]">
+                  <div className="flex order-1 h-[300px] items-center justify-center pt-5 sm:h-[360px] lg:order-2 lg:h-full lg:pt-0" style={{ marginRight: '.8rem'}}>
+                    <div className="relative h-full max-h-[360px] w-full max-w-[620px]">
                       <div className="absolute inset-0 rounded-[28px] bg-[#f0e3d6]/80 blur-2xl" />
                       <img src={slide.image} alt={slide.title} className="relative z-10 h-full w-full object-cover rounded-[28px] shadow-[0_30px_80px_rgba(0,0,0,0.12)]" />
                     </div>
@@ -107,7 +95,7 @@ const HeroSlider: React.FC = () => {
           ›
         </button>
 
-        <div className="h-[500px] w-full">&nbsp;</div>
+        <div className="h-[680px] w-full lg:h-[500px]">&nbsp;</div>
       </div>
     </section>
   );

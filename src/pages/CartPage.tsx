@@ -69,7 +69,7 @@ const CartPage = () => {
       if (productUrl) lines.push(`  Link: ${productUrl}`);
     });
     lines.push('');
-    lines.push(`Total: ₹${total.toFixed(0)}`);
+    // lines.push(`Total: ₹${total.toFixed(0)}`);
     if (note) {
       lines.push('');
       lines.push(`Note: ${note}`);
@@ -169,14 +169,14 @@ const CartPage = () => {
               <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
                 <h2 className="text-lg font-semibold text-black mb-4">Order summary</h2>
                 <div className="space-y-3 text-sm text-gray-600">
-                  <div className="flex justify-between"><span>Subtotal</span><span>₹{total.toFixed(0)}</span></div>
-                  <div className="flex justify-between"><span>Shipping</span><span className="text-black font-semibold">Free</span></div>
+                  {/* <div className="flex justify-between"><span>Subtotal</span><span>₹{total.toFixed(0)}</span></div> */}
+                  {/* <div className="flex justify-between"><span>Shipping</span><span className="text-black font-semibold">Free</span></div> */}
                 </div>
                 <div className="mt-6 border-t border-gray-200 pt-5">
-                  <div className="flex items-center justify-between text-base font-semibold text-black mb-4">
+                  {/* <div className="flex items-center justify-between text-base font-semibold text-black mb-4">
                     <span>Total</span>
                     <span>₹{total.toFixed(0)}</span>
-                  </div>
+                  </div> */}
 
                   {!showDetailsForm ? (
                     <>

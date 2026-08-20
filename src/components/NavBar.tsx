@@ -1,4 +1,4 @@
-import { Search, ShoppingBag, ChevronDown,  X } from 'lucide-react';
+import { Search, ShoppingBag, ChevronDown, X, Menu } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
 import { useEffect, useState } from 'react';
@@ -49,11 +49,12 @@ const NavBar: React.FC = () => {
   return (
     <div className="relative w-full bg-white border-b border-gray-200">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="h-[72px] flex items-center justify-between gap-4">
+        <div className="h-16 sm:h-[72px] flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-5 flex-1 min-w-0">
+            <button type="button" onClick={() => handleMenuToggle('mobile')} className="lg:hidden shrink-0 p-2 text-black" aria-label="Open menu"><Menu size={22} /></button>
             <Link to="/" className="no-underline text-black shrink-0">
-              <div className="text-[1.9rem] font-black leading-none tracking-[-0.08em]">UPHΛRT</div>
-              <div className="text-[0.58rem] tracking-[0.22em] uppercase mt-1">The Gift Shop</div>
+              <div className="text-[1.35rem] sm:text-[1.9rem] font-black leading-none tracking-[-0.08em]">UPHΛRT</div>
+              <div className="text-[0.48rem] sm:text-[0.58rem] tracking-[0.22em] uppercase mt-1">The Gift Shop</div>
             </Link>
 
             <nav className="hidden lg:flex items-center gap-7 uppercase text-[0.76rem] font-medium tracking-[0.04em] flex-1">
@@ -108,7 +109,18 @@ const NavBar: React.FC = () => {
               </button>
             </div>
 
-            {activeMenu === 'categories' ? (
+            {activeMenu === 'mobile' ? (
+              <div className="grid grid-cols-1 divide-y divide-gray-100 text-black">
+                {navItems.map((item) => {
+                  const path = item.key === "shop" ? "/shop" : item.key === "categories" ? "/categories" : item.key === "newArrivals" ? "/new-arrivals" : "/pre-orders";
+                  return (
+                    <button key={item.key} type="button" onClick={() => handleQuickAction(path)} className="flex items-center justify-between py-4 text-left text-sm font-semibold uppercase tracking-[0.08em]">
+                      {item.label}<span className="text-lg font-normal">→</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : activeMenu === 'categories' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-x-8 gap-y-3 text-black">
                 {categories.length === 0 ? (
                   <div className="col-span-full text-gray-500 py-4">No categories found.</div>

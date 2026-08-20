@@ -14,10 +14,25 @@ import Loading from '../components/Loading';
 import {
   LogIn, Store, PlusCircle, Package, Gift, Trash2, Loader2, ImagePlus,
   Pencil, X, Tag, Plus, Lightbulb, FolderPlus, Folder, LayoutGrid,
-  BarChart2, ChevronRight, AlertTriangle,
+  BarChart2, ChevronRight, AlertTriangle, Wallet,
 } from 'lucide-react';
 
-type ActiveView = 'products' | 'categories' | 'tags' | 'occasions' | 'analytics' | 'slides';
+type ActiveView = 'products' | 'categories' | 'tags' | 'occasions' | 'sales' | 'analytics' | 'slides';
+
+type SaleRecord = {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  amount: number;
+  paymentMethod: string;
+  customerName: string;
+  status: 'Paid' | 'Pending' | 'Cancelled';
+  notes: string;
+  createdAt: string;
+  // whether this sale has been applied to inventory (true when status was Paid and we adjusted stock)
+  appliedInventory?: boolean;
+};
 
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -51,8 +66,23 @@ const Admin = () => {
   const [slideTitle, setSlideTitle] = useState('');
   const [slideSubtitle, setSlideSubtitle] = useState('');
   const [slideButtonText, setSlideButtonText] = useState('');
+  const [slideButtonUrl, setSlideButtonUrl] = useState('');
+  const [slideButton2Text, setSlideButton2Text] = useState('');
+  const [slideButton2Url, setSlideButton2Url] = useState('');
   const [slideImageUrl, setSlideImageUrl] = useState('');
+  const [slideImageFile, setSlideImageFile] = useState<File | null>(null);
+  const [slideImagePreview, setSlideImagePreview] = useState('');
+  const [slideImageMode, setSlideImageMode] = useState<'url' | 'upload'>('url');
   const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
+
+  const [sales, setSales] = useState<SaleRecord[]>([]);
+  const [saleProductId, setSaleProductId] = useState('');
+  const [saleQuantity, setSaleQuantity] = useState('1');
+  const [salePaymentMethod, setSalePaymentMethod] = useState('Cash');
+  const [saleCustomerName, setSaleCustomerName] = useState('');
+  const [saleNotes, setSaleNotes] = useState('');
+  const [saleStatus, setSaleStatus] = useState<'Paid' | 'Pending' | 'Cancelled'>('Paid');
+  const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
 
   // Category modal state
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -82,7 +112,7 @@ const Admin = () => {
   const [occasionIconMode, setOccasionIconMode] = useState<'emoji' | 'upload' | 'fontawesome'>('emoji');
 
   // Delete confirm modal
-  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'product' | 'category' | 'tag' | 'occasion' | 'slide'; id: string; name: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'product' | 'category' | 'tag' | 'occasion' | 'slide' | 'sale'; id: string; name: string } | null>(null);
 
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -122,6 +152,9 @@ const Admin = () => {
       setCategories(categoriesData);
       setOccasions(occasionData);
       setSlides(slidesData);
+      const storedSalesRaw = JSON.parse(localStorage.getItem('uphar_sales') || '[]');
+      const storedSales = (storedSalesRaw as SaleRecord[]).map((s) => ({ appliedInventory: false, ...s }));
+      setSales(storedSales);
     } catch (err) {
       console.error('Error loading inventory:', err);
     } finally {
@@ -252,6 +285,201 @@ const Admin = () => {
   const handleDelete = async (id: string) => {
     const success = await deleteProduct(id);
     if (success) setProducts(products.filter((p) => p.id !== id));
+    setDeleteConfirm(null);
+  };
+
+  const saveSalesRecords = (nextSales: SaleRecord[]) => {
+    setSales(nextSales);
+    localStorage.setItem('uphar_sales', JSON.stringify(nextSales));
+  };
+
+  const resetSaleForm = () => {
+    setEditingSaleId(null);
+    setSaleProductId('');
+    setSaleQuantity('1');
+    setSalePaymentMethod('Cash');
+    setSaleCustomerName('');
+    setSaleNotes('');
+    setSaleStatus('Paid');
+  };
+
+  /**
+   * Applies a NET inventory change to a single product in one write.
+   * stockDelta / soldDelta are the total (already-combined) amounts to add
+   * to the product's current quantity / soldQuantity. Callers must compute
+   * the net delta up front (e.g. "undo old sale" + "apply new sale" combined
+   * into one number) rather than issuing separate revert/apply calls that
+   * each re-read product state — two sequential calls based on the same
+   * stale `products` snapshot will clobber each other.
+   */
+  const applyInventoryDelta = async (
+    productId: string,
+    stockDelta: number,
+    soldDelta: number
+  ) => {
+    const product = products.find((item) => item.id === productId);
+    if (!product) return null;
+
+    const updatedProduct = await updateProduct(productId, {
+      quantity: Math.max(0, (product.quantity ?? 0) + stockDelta),
+      soldQuantity: Math.max(0, (product.soldQuantity ?? 0) + soldDelta),
+    });
+
+    if (updatedProduct) {
+      setProducts((prev) => prev.map((item) => (item.id === productId ? updatedProduct : item)));
+    }
+
+    return updatedProduct;
+  };
+
+  const handleRecordSale = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const selectedProduct = products.find((product) => product.id === saleProductId);
+    const quantity = Number(saleQuantity);
+
+    if (!selectedProduct) {
+      setMessage({ type: 'error', text: 'Please select a product.' });
+      return;
+    }
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setMessage({ type: 'error', text: 'Please enter a valid quantity.' });
+      return;
+    }
+
+    try {
+      if (editingSaleId) {
+        const originalSale = sales.find((sale) => sale.id === editingSaleId);
+        if (!originalSale) {
+          setMessage({ type: 'error', text: 'The original sale record could not be found.' });
+          return;
+        }
+
+        const newApplied = saleStatus === 'Paid';
+        const sameProduct = originalSale.productId === selectedProduct.id;
+
+        if (sameProduct) {
+          // Same product: fold "undo old effect" + "apply new effect" into a
+          // single net delta, computed once from current state, and issue
+          // exactly one write. This avoids the stale-read clobbering bug.
+          const undoStockDelta = originalSale.appliedInventory ? originalSale.quantity : 0; // give back old qty
+          const undoSoldDelta = originalSale.appliedInventory ? -originalSale.quantity : 0;
+          const redoStockDelta = newApplied ? -quantity : 0; // take new qty
+          const redoSoldDelta = newApplied ? quantity : 0;
+
+          const netStockDelta = undoStockDelta + redoStockDelta;
+          const netSoldDelta = undoSoldDelta + redoSoldDelta;
+
+          // Stock check: how much would actually be available once the old
+          // sale's effect is undone.
+          const availableIfReverted = (selectedProduct.quantity ?? 0) + undoStockDelta;
+          if (newApplied && availableIfReverted < quantity) {
+            setMessage({ type: 'error', text: `Only ${availableIfReverted} units left for ${selectedProduct.name}.` });
+            return;
+          }
+
+          const updatedProduct = await applyInventoryDelta(selectedProduct.id, netStockDelta, netSoldDelta);
+          if (!updatedProduct) {
+            setMessage({ type: 'error', text: 'Could not save the sale update. Please try again.' });
+            return;
+          }
+        } else {
+          // Different product: these are two independent products, so a
+          // separate revert-write and apply-write is safe (no shared stale
+          // state between them).
+          if (originalSale.appliedInventory) {
+            await applyInventoryDelta(originalSale.productId, originalSale.quantity, -originalSale.quantity);
+          }
+
+          if (newApplied) {
+            if ((selectedProduct.quantity ?? 0) < quantity) {
+              setMessage({ type: 'error', text: `Only ${selectedProduct.quantity ?? 0} units left for ${selectedProduct.name}.` });
+              return;
+            }
+            const updatedNewProduct = await applyInventoryDelta(selectedProduct.id, -quantity, quantity);
+            if (!updatedNewProduct) {
+              setMessage({ type: 'error', text: 'Could not save the sale update. Please try again.' });
+              return;
+            }
+          }
+        }
+
+        const updatedSales = sales.map((sale) =>
+          sale.id === editingSaleId
+            ? {
+                ...sale,
+                productId: selectedProduct.id,
+                productName: selectedProduct.name,
+                quantity,
+                amount: quantity * (selectedProduct.sellingPrice ?? 0),
+                paymentMethod: salePaymentMethod,
+                customerName: saleCustomerName.trim() || 'Walk-in customer',
+                status: saleStatus,
+                notes: saleNotes.trim(),
+                appliedInventory: newApplied,
+              }
+            : sale
+        );
+
+        saveSalesRecords(updatedSales);
+        resetSaleForm();
+        setMessage({ type: 'success', text: `Sale updated for ${selectedProduct.name}.` });
+        return;
+      }
+
+      const newApplied = saleStatus === 'Paid';
+      if (newApplied && (selectedProduct.quantity ?? 0) < quantity) {
+        setMessage({ type: 'error', text: `Only ${selectedProduct.quantity ?? 0} units left for ${selectedProduct.name}.` });
+        return;
+      }
+
+      const updatedProduct = await applyInventoryDelta(
+        selectedProduct.id,
+        newApplied ? -quantity : 0,
+        newApplied ? quantity : 0
+      );
+      if (!updatedProduct) {
+        setMessage({ type: 'error', text: 'Could not save the sale. Please try again.' });
+        return;
+      }
+
+      const nextSale: SaleRecord = {
+        id: String(Date.now()),
+        productId: selectedProduct.id,
+        productName: selectedProduct.name,
+        quantity,
+        amount: quantity * (selectedProduct.sellingPrice ?? 0),
+        paymentMethod: salePaymentMethod,
+        customerName: saleCustomerName.trim() || 'Walk-in customer',
+        status: saleStatus,
+        notes: saleNotes.trim(),
+        createdAt: new Date().toISOString(),
+        appliedInventory: newApplied,
+      };
+
+      const nextSales = [nextSale, ...sales];
+      saveSalesRecords(nextSales);
+      resetSaleForm();
+      setMessage({ type: 'success', text: `${quantity} unit(s) of ${selectedProduct.name} recorded as sold.` });
+    } catch (error) {
+      console.error('Failed to record sale:', error);
+      setMessage({ type: 'error', text: 'The sale could not be saved.' });
+    }
+  };
+
+  const handleDeleteSale = async (id: string) => {
+    const saleToDelete = sales.find((sale) => sale.id === id);
+    if (!saleToDelete) {
+      setDeleteConfirm(null);
+      return;
+    }
+
+    if (saleToDelete.appliedInventory) {
+      await applyInventoryDelta(saleToDelete.productId, saleToDelete.quantity, -saleToDelete.quantity);
+    }
+
+    const nextSales = sales.filter((sale) => sale.id !== id);
+    saveSalesRecords(nextSales);
     setDeleteConfirm(null);
   };
 
@@ -472,12 +700,28 @@ const Admin = () => {
   };
 
   // ── Slide helpers ────────────────────────────────────────────────────────
+  const handleSlideImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSlideImageFile(file);
+    setSlideImageMode('upload');
+    setSlideImageUrl('');
+
+    const reader = new FileReader();
+    reader.onloadend = () => setSlideImagePreview(String(reader.result || ''));
+    reader.readAsDataURL(file);
+  };
+
   const openAddSlide = () => {
     setEditingSlideId(null);
     setSlideTitle('');
     setSlideSubtitle('');
     setSlideButtonText('');
     setSlideImageUrl('');
+    setSlideImageFile(null);
+    setSlideImagePreview('');
+    setSlideImageMode('url');
     setShowSlideEditor(true);
     setActiveView('slides');
   };
@@ -486,8 +730,14 @@ const Admin = () => {
     setEditingSlideId(slide.id);
     setSlideTitle(slide.title);
     setSlideSubtitle(slide.subtitle);
-    setSlideButtonText(slide.button);
+    setSlideButtonText(slide.button || ' ');
+    setSlideButtonUrl(slide.buttonUrl || ' ');
+    setSlideButton2Text(slide.button2 || ' ');
+    setSlideButton2Url(slide.button2Url || ' ');
     setSlideImageUrl(slide.image);
+    setSlideImageFile(null);
+    setSlideImagePreview(slide.image);
+    setSlideImageMode(slide.image ? 'url' : 'upload');
     setShowSlideEditor(true);
     setActiveView('slides');
   };
@@ -498,36 +748,63 @@ const Admin = () => {
     setSlideSubtitle('');
     setSlideButtonText('');
     setSlideImageUrl('');
+    setSlideImageFile(null);
+    setSlideImagePreview('');
+    setSlideImageMode('url');
     setMessage({ type: '', text: '' });
     setShowSlideEditor(false);
   };
 
   const handleSlideSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!slideTitle.trim() || !slideSubtitle.trim() || !slideButtonText.trim() || !slideImageUrl.trim()) {
-      setMessage({ type: 'error', text: 'Please complete all slide fields.' });
+    if (!slideTitle.trim() || !slideSubtitle.trim()) {
+      setMessage({ type: 'error', text: 'Please complete the slide title and subtitle.' });
       return;
     }
 
-    const slidePayload: Slide = {
-      id: editingSlideId || String(Date.now()),
-      title: slideTitle.trim(),
-      subtitle: slideSubtitle.trim(),
-      button: slideButtonText.trim(),
-      image: slideImageUrl.trim(),
-    };
+    const hasImageSource = slideImageUrl.trim() || slideImagePreview || slideImageFile;
+    if (!hasImageSource) {
+      setMessage({ type: 'error', text: 'Please add a slide image or upload one.' });
+      return;
+    }
 
-    const updatedSlides = editingSlideId
-      ? slides.map((item) => (item.id === editingSlideId ? slidePayload : item))
-      : [slidePayload, ...slides].slice(0, 5);
+    try {
+      let finalImageUrl = slideImageUrl.trim() || slideImagePreview;
+      if (slideImageFile) {
+        finalImageUrl = await uploadImage(slideImageFile);
+      }
 
-    setSlides(updatedSlides);
-    await saveSlides(updatedSlides);
-    setMessage({ type: 'success', text: editingSlideId ? 'Slide updated.' : 'Slide added.' });
-    cancelSlideEditor();
+      const slidePayload: Slide = {
+        id: editingSlideId || String(Date.now()),
+        title: slideTitle.trim(),
+        subtitle: slideSubtitle.trim(),
+        button: slideButtonText.trim(),
+        buttonUrl: slideButtonUrl.trim() || '/shop',
+        button2: slideButton2Text.trim(),
+        button2Url: slideButton2Url.trim() || '/shop',
+        image: finalImageUrl,
+      };
+
+      const updatedSlides = editingSlideId
+        ? slides.map((item) => (item.id === editingSlideId ? slidePayload : item))
+        : [slidePayload, ...slides].slice(0, 8);
+
+      setSlides(updatedSlides);
+      await saveSlides(updatedSlides);
+      setMessage({ type: 'success', text: editingSlideId ? 'Slide updated.' : 'Slide added.' });
+      cancelSlideEditor();
+    } catch (error) {
+      console.error('Failed to save slide image:', error);
+      setMessage({ type: 'error', text: 'The slide image could not be uploaded. Please try again.' });
+    }
   };
 
   const handleDeleteSlide = async (id: string) => {
+    if (slides.length <= 2) {
+      setMessage({ type: 'error', text: 'Keep at least two homepage slides.' });
+      setDeleteConfirm(null);
+      return;
+    }
     const updatedSlides = slides.filter((slide) => slide.id !== id);
     setSlides(updatedSlides);
     await saveSlides(updatedSlides);
@@ -599,6 +876,7 @@ const Admin = () => {
     { id: 'categories', label: 'Categories', icon: <LayoutGrid size={18} /> },
     { id: 'tags', label: 'Tags', icon: <Tag size={18} /> },
     { id: 'occasions', label: 'Occasions', icon: <Gift size={18} /> },
+    { id: 'sales', label: 'Sales', icon: <Wallet size={18} /> },
     { id: 'slides', label: 'Slides', icon: <ImagePlus size={18} /> },
     { id: 'analytics', label: 'Analytics', icon: <BarChart2 size={18} /> },
   ];
@@ -708,13 +986,13 @@ const Admin = () => {
                       <th className="py-4 px-4"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5">
+                  <tbody className="divide-y divide-gray-100">
                     {products.map((product) => (
-                      <tr key={product.id} className="hover:bg-white/3 transition-colors group">
+                      <tr key={product.id} className="hover:bg-gray-50 transition-colors group">
                         <td className="py-4 px-5">
                           <div className="flex items-center gap-3">
-                            <img src={product.image_url} alt="" className="w-10 h-10 object-cover rounded-lg bg-white/5" />
-                            <span className="font-medium text-white/90 truncate max-w-[130px]">{product.name}</span>
+                            <img src={product.image_url} alt="" className="w-10 h-10 object-cover rounded-lg bg-gray-100" />
+                            <span className="font-medium text-gray-900 truncate max-w-[130px]">{product.name}</span>
                           </div>
                         </td>
                         <td className="py-4 px-4 text-gray-500 text-xs">{categories.find((c) => c.id === product.categoryId)?.name || '—'}</td>
@@ -761,15 +1039,15 @@ const Admin = () => {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {categories.map((category) => (
-                  <div key={category.id} className="relative group rounded-2xl bg-[#1c1c1e] border border-white/5 overflow-hidden">
-                    <div className="aspect-square bg-white/5">
+                  <div key={category.id} className="relative group rounded-2xl bg-white border border-gray-200 overflow-hidden shadow-sm">
+                    <div className="aspect-square bg-gray-100">
                       {category.coverImage
                         ? <img src={category.coverImage} alt={category.name} className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center text-[#c084b0]"><Folder size={32} /></div>
+                        : <div className="w-full h-full flex items-center justify-center text-gray-400"><Folder size={32} /></div>
                       }
                     </div>
                     <div className="p-3">
-                      <h4 className="font-medium text-sm truncate text-white/90">{category.name}</h4>
+                      <h4 className="font-medium text-sm truncate text-gray-900">{category.name}</h4>
                       <p className="text-[10px] text-gray-500 mt-0.5">/{category.slug}</p>
                       {!category.isActive && <span className="text-[10px] text-amber-500">Inactive</span>}
                     </div>
@@ -807,7 +1085,7 @@ const Admin = () => {
               <div className="space-y-2">
                 {tags.length === 0 && <p className="text-gray-500 text-sm text-center py-6">No tags yet.</p>}
                 {tags.map((t) => (
-                  <div key={t} className="flex justify-between items-center px-4 py-2.5 bg-white/5 rounded-xl group border-1">
+                  <div key={t} className="flex justify-between items-center px-4 py-2.5 bg-gray-50 rounded-xl group border border-gray-100">
                     <span className="text-sm">{t}</span>
                     <button
                       onClick={() => setDeleteConfirm({ type: 'tag', id: t, name: t })}
@@ -888,11 +1166,11 @@ const Admin = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-2xl font-semibold">Homepage Slides</h2>
-                <p className="mt-1 text-sm text-gray-600 max-w-2xl">Manage the hero carousel slides shown on the storefront. You can publish up to five slides.</p>
+                <p className="mt-1 text-sm text-gray-600 max-w-2xl">Manage the hero carousel slides shown on the storefront. You can publish up to eight slides.</p>
               </div>
               <button
                 onClick={openAddSlide}
-                disabled={slides.length >= 5}
+                disabled={slides.length >= 8}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-xl text-sm font-medium transition-colors hover:bg-gray-800 disabled:opacity-50"
               >
                 <Plus size={15} /> Add Slide
@@ -917,13 +1195,204 @@ const Admin = () => {
                       <p className="mt-4 text-xs uppercase tracking-[0.25em] text-red-600 font-semibold">{slide.button}</p>
                       <div className="mt-5 flex items-center gap-2">
                         <button onClick={() => openEditSlide(slide)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm hover:bg-gray-200 transition-colors">Edit</button>
-                        <button onClick={() => setDeleteConfirm({ type: 'slide', id: slide.id, name: slide.title })} className="px-3 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-800 transition-colors">Delete</button>
+                        <button onClick={() => setDeleteConfirm({ type: 'slide', id: slide.id, name: slide.title })} disabled={slides.length <= 2} title={slides.length <= 2 ? "Keep at least two slides" : "Delete slide"} className="px-3 py-2 bg-black text-white rounded-xl text-sm hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Delete</button>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Sales view */}
+        {activeView === 'sales' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-semibold">Sales Tracker</h2>
+                <p className="mt-1 text-sm text-gray-600">Simple sales logging for non-technical staff. Mark sold quantity and stock updates happen automatically.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Items in stock</p>
+                <p className="text-3xl font-bold text-emerald-600">{products.reduce((sum, product) => sum + (product.quantity ?? 0), 0)}</p>
+              </div>
+              <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Units sold</p>
+                <p className="text-3xl font-bold text-blue-600">{products.reduce((sum, product) => sum + (product.soldQuantity ?? 0), 0)}</p>
+              </div>
+              <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                <p className="text-xs uppercase tracking-wider text-gray-500 mb-2">Sales today</p>
+                <p className="text-3xl font-bold text-amber-600">{sales.filter((sale) => new Date(sale.createdAt).toDateString() === new Date().toDateString()).length}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6">
+              <form onSubmit={handleRecordSale} className="bg-white border border-gray-200 rounded-3xl p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">{editingSaleId ? 'Edit sale' : 'Record a sale'}</h3>
+                  {editingSaleId && (
+                    <button type="button" onClick={resetSaleForm} className="text-xs font-medium text-gray-600 hover:text-black">
+                      Cancel edit
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Product</label>
+                    <select
+                      value={saleProductId}
+                      onChange={(e) => setSaleProductId(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm focus:outline-none focus:border-black transition-colors"
+                    >
+                      <option value="">Select product</option>
+                      {products.map((product) => (
+                        <option key={product.id} value={product.id}>{product.name} ({product.quantity ?? 0} left)</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Quantity sold</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={saleQuantity}
+                      onChange={(e) => setSaleQuantity(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm focus:outline-none focus:border-black transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Payment method</label>
+                    <select
+                      value={salePaymentMethod}
+                      onChange={(e) => setSalePaymentMethod(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm focus:outline-none focus:border-black transition-colors"
+                    >
+                      <option>Cash</option>
+                      <option>UPI</option>
+                      <option>Bank Transfer</option>
+                      <option>Card</option>
+                      <option>COD</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Customer name</label>
+                    <input
+                      type="text"
+                      value={saleCustomerName}
+                      onChange={(e) => setSaleCustomerName(e.target.value)}
+                      placeholder="Optional"
+                      className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Status</label>
+                    <select
+                      value={saleStatus}
+                      onChange={(e) => setSaleStatus(e.target.value as 'Paid' | 'Pending' | 'Cancelled')}
+                      className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm focus:outline-none focus:border-black transition-colors"
+                    >
+                      <option value="Paid">Paid</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Notes</label>
+                    <textarea
+                      value={saleNotes}
+                      onChange={(e) => setSaleNotes(e.target.value)}
+                      rows={3}
+                      placeholder="Optional order notes"
+                      className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-3 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-semibold transition-colors"
+                  >
+                    {editingSaleId ? 'Update sale' : 'Save sale'}
+                  </button>
+                </div>
+              </form>
+
+              <div className="bg-white border border-gray-200 rounded-3xl shadow-sm overflow-hidden">
+                <div className="border-b border-gray-200 px-5 py-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Recent sales</h3>
+                </div>
+                {sales.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500 text-sm">No sales logged yet.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 text-gray-600">
+                        <tr>
+                          <th className="text-left px-4 py-3 font-medium">Product</th>
+                          <th className="text-left px-4 py-3 font-medium">Qty</th>
+                          <th className="text-left px-4 py-3 font-medium">Amount</th>
+                          <th className="text-left px-4 py-3 font-medium">Method</th>
+                          <th className="text-left px-4 py-3 font-medium">Status</th>
+                          <th className="text-left px-4 py-3 font-medium">Time</th>
+                          <th className="text-left px-4 py-3 font-medium">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sales.map((sale) => (
+                          <tr key={sale.id} className="border-t border-gray-200 align-top">
+                            <td className="px-4 py-3 text-gray-900">{sale.productName}</td>
+                            <td className="px-4 py-3 text-gray-700">{sale.quantity}</td>
+                            <td className="px-4 py-3 text-gray-700">₹{sale.amount.toLocaleString('en-IN')}</td>
+                            <td className="px-4 py-3 text-gray-700">{sale.paymentMethod}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${sale.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : sale.status === 'Pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                                {sale.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-gray-700">{new Date(sale.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingSaleId(sale.id);
+                                    setSaleProductId(sale.productId);
+                                    setSaleQuantity(String(sale.quantity));
+                                    setSalePaymentMethod(sale.paymentMethod);
+                                    setSaleCustomerName(sale.customerName === 'Walk-in customer' ? '' : sale.customerName);
+                                    setSaleNotes(sale.notes);
+                                    setSaleStatus(sale.status);
+                                    setMessage({ type: '', text: '' });
+                                  }}
+                                  className="text-gray-700 hover:text-black text-xs font-medium"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirm({ type: 'sale', id: sale.id, name: sale.productName })}
+                                  className="text-red-600 hover:text-red-700 text-xs font-medium"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -946,9 +1415,9 @@ const Admin = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               {[
-                { label: 'Inventory Value', value: products.reduce((sum, item) => sum + ((item.costPrice ?? 0) * (item.quantity ?? 0)), 0), color: 'text-yellow-300', prefix: '₹' },
-                { label: 'Revenue Potential', value: products.reduce((sum, item) => sum + ((item.sellingPrice ?? 0) * (item.quantity ?? 0)), 0), color: 'text-cyan-300', prefix: '₹' },
-                { label: 'Profit Potential', value: products.reduce((sum, item) => sum + (((item.sellingPrice ?? 0) - (item.costPrice ?? 0)) * (item.quantity ?? 0)), 0), color: 'text-amber-400', prefix: '₹' },
+                { label: 'Inventory Value', value: products.reduce((sum, item) => sum + ((item.costPrice ?? 0) * (item.quantity ?? 0)), 0), color: 'text-yellow-600', prefix: '₹' },
+                { label: 'Revenue Potential', value: products.reduce((sum, item) => sum + ((item.sellingPrice ?? 0) * (item.quantity ?? 0)), 0), color: 'text-cyan-600', prefix: '₹' },
+                { label: 'Profit Potential', value: products.reduce((sum, item) => sum + (((item.sellingPrice ?? 0) - (item.costPrice ?? 0)) * (item.quantity ?? 0)), 0), color: 'text-amber-500', prefix: '₹' },
               ].map((stat) => (
                 <div key={stat.label} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
                   <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">{stat.label}</p>
@@ -1281,7 +1750,6 @@ const Admin = () => {
                   onChange={(e) => setOccasionName(e.target.value)}
                   placeholder="e.g., Birthday"
                   className="w-full px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
-                  required
                 />
               </div>
 
@@ -1383,7 +1851,6 @@ const Admin = () => {
                   className="flex-1 px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
                 />
                 <button onClick={handleAddTag} className="px-3 py-2 bg-black text-white rounded-xl text-sm font-medium flex items-center gap-1 hover:bg-gray-800 transition-colors"><Plus size={15} /> Add</button>
-               <button type="button" onClick={() => { setShowTagModal(false); setActiveView('slides'); setShowSlideEditor(true); }} className="px-3 py-2 bg-black text-white rounded-xl text-sm font-medium flex items-center gap-1 hover:bg-gray-800 transition-colors"><ImagePlus size={15} /> Create Slide</button>
               </div>
               <div className="max-h-52 overflow-auto space-y-1.5">
                 {tags.map((t) => (
@@ -1419,6 +1886,7 @@ const Admin = () => {
                   else if (deleteConfirm.type === 'category') handleDeleteCategory(deleteConfirm.id);
                   else if (deleteConfirm.type === 'tag') handleDeleteTag(deleteConfirm.id);
                   else if (deleteConfirm.type === 'slide') handleDeleteSlide(deleteConfirm.id);
+                  else if (deleteConfirm.type === 'sale') handleDeleteSale(deleteConfirm.id);
                   else if (deleteConfirm.type === 'occasion') handleDeleteOccasion(deleteConfirm.id);
                 }}
                 className="flex-1 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-semibold transition-colors"
@@ -1433,7 +1901,7 @@ const Admin = () => {
       {/* Slide editor modal */}
       {showSlideEditor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/10 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl w-full max-w-xl border border-gray-200 shadow-2xl overflow-hidden" style={{ animation: 'scaleIn 0.2s ease' }}>
+          <div className="bg-white rounded-3xl w-full max-w-xl max-h-[calc(100vh-2rem)] border border-gray-200 shadow-2xl overflow-hidden flex flex-col" style={{ animation: 'scaleIn 0.2s ease' }}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">{editingSlideId ? 'Edit Slide' : 'New Slide'}</h3>
@@ -1441,7 +1909,7 @@ const Admin = () => {
               </div>
               <button onClick={cancelSlideEditor} className="p-2 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"><X size={18} /></button>
             </div>
-            <form onSubmit={handleSlideSubmit} className="px-6 py-5 space-y-4">
+            <form onSubmit={handleSlideSubmit} className="px-6 py-5 space-y-4 overflow-y-auto min-h-0">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-2">Slide Title</label>
                 <input
@@ -1465,26 +1933,72 @@ const Admin = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-2">Button Text</label>
-                <input
-                  type="text"
-                  value={slideButtonText}
-                  onChange={(e) => setSlideButtonText(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-gray-900 focus:outline-none focus:border-red-600 transition-colors"
-                  placeholder="Shop now, Learn more, etc."
-                  required
-                />
+                <div className="flex items-center justify-between mb-3"><div><p className="text-sm font-semibold text-gray-900">Primary button</p><p className="text-xs text-gray-500 mt-0.5">Add a call to action to this slide.</p></div><span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Optional</span></div>
+                <label className="sr-only">Primary button label</label>
+                <div className="flex flex-col sm:flex-row gap-2"  >
+                <input type="text" value={slideButtonText} onChange={(e) => setSlideButtonText(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-black transition-colors" placeholder="Shop now, Learn more, etc." />
+                <input type="text" value={slideButtonUrl} onChange={(e) => setSlideButtonUrl(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-black transition-colors" placeholder="Button link, e.g. /new-arrivals" />
+                </div>
+              </div>
+              <div >
+                <div className="flex items-center justify-between mb-3"><div><p className="text-sm font-semibold text-gray-900">Secondary button</p><p className="text-xs text-gray-500 mt-0.5">Leave blank if you only need one button.</p></div><span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Optional</span></div>
+                <label className="sr-only">Secondary button label</label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                <input type="text" value={slideButton2Text} placeholder="Optional second button" onChange={(e) => setSlideButton2Text(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-black transition-colors" />
+                <input type="text" value={slideButton2Url} placeholder="Second button link, e.g. /shop" onChange={(e) => setSlideButton2Url(e.target.value)} className="w-full  px-4 py-3 border border-gray-200 rounded-2xl text-gray-900" />
+                </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-2">Image URL</label>
-                <input
-                  type="text"
-                  value={slideImageUrl}
-                  onChange={(e) => setSlideImageUrl(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-gray-900 focus:outline-none focus:border-red-600 transition-colors"
-                  placeholder="https://..."
-                  required
-                />
+                <label className="block text-xs font-medium text-gray-600 mb-2">Slide Image</label>
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSlideImageMode('url');
+                      setSlideImageFile(null);
+                      setSlideImagePreview(slideImageUrl || '');
+                    }}
+                    className={`px-3 py-2 rounded-xl text-sm border transition-colors ${slideImageMode === 'url' ? 'bg-black text-white border-black' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSlideImageMode('upload')}
+                    className={`px-3 py-2 rounded-xl text-sm border transition-colors ${slideImageMode === 'upload' ? 'bg-black text-white border-black' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    Upload Image
+                  </button>
+                </div>
+
+                {slideImageMode === 'url' ? (
+                  <input
+                    type="text"
+                    value={slideImageUrl}
+                    onChange={(e) => {
+                      const nextUrl = e.target.value;
+                      setSlideImageUrl(nextUrl);
+                      setSlideImageFile(null);
+                      setSlideImagePreview(nextUrl.trim() || '');
+                    }}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-gray-900 focus:outline-none focus:border-red-600 transition-colors"
+                    placeholder="https://..."
+                  />
+                ) : (
+                  <div className="border border-dashed border-gray-300 rounded-2xl p-4 bg-gray-50">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSlideImageChange}
+                      className="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:bg-black file:text-white"
+                    />
+                    {(slideImagePreview || slideImageUrl) && (
+                      <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                        <img src={slideImagePreview || slideImageUrl} alt="Slide preview" className="h-32 w-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               {message.text && (
                 <p className={`rounded-2xl p-3 text-sm ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>

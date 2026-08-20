@@ -4,11 +4,16 @@ import type { Slide } from '../types';
 const LOCAL_STORAGE_KEY = 'uphar_slides';
 const MIGRATION_KEY = 'uphar_slides_migrated_v1';
 
+const getDefaultButtonUrl = (button = '') => button.toLowerCase().includes('new arrival') ? '/new-arrivals' : '/shop';
+
 const applySlideDefaults = (slide: Partial<Slide>): Slide => ({
   id: slide.id || String(Date.now()),
   title: slide.title || '',
   subtitle: slide.subtitle || '',
-  button: slide.button || 'View collection',
+  button: slide.button || '',
+  buttonUrl: slide.buttonUrl || getDefaultButtonUrl(slide.button),
+  button2: slide.button2 || '',
+  button2Url: slide.button2Url || '/shop',
   image: slide.image || '',
 });
 

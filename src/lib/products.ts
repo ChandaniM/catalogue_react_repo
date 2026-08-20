@@ -129,6 +129,7 @@ export const addProduct = async (product: Omit<Product, 'id'>): Promise<Product 
       cost_price: product.costPrice,
       selling_price: product.sellingPrice,
       quantity: product.quantity,
+      sold_quantity: product.soldQuantity ?? 0,
       tags: product.tags || [],
       category_id: product.categoryId,
       occasion_id: product.occasionId ?? null,
@@ -168,6 +169,7 @@ export const updateProduct = async (
     if (updates.costPrice !== undefined) supabaseUpdates.cost_price = updates.costPrice;
     if (updates.sellingPrice !== undefined) supabaseUpdates.selling_price = updates.sellingPrice;
     if (updates.quantity !== undefined) supabaseUpdates.quantity = updates.quantity;
+    if (updates.soldQuantity !== undefined) supabaseUpdates.sold_quantity = updates.soldQuantity;
     if (updates.tags !== undefined) supabaseUpdates.tags = updates.tags;
     if (updates.categoryId !== undefined) supabaseUpdates.category_id = updates.categoryId;
     if (updates.occasionId !== undefined) supabaseUpdates.occasion_id = updates.occasionId ?? null;

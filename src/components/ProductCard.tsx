@@ -41,12 +41,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
           {product.description}
         </p>
 
-        <div className="mt-4 flex items-center justify-between">
-          {/* <div className="text-lg font-semibold text-[var(--charcoal)]">₹{product.sellingPrice}</div> */}
+        <div className="mt-4 flex items-center justify-between gap-3">
           <button
             onClick={() => !isSoldOut && addToCart(product.id)}
             disabled={isSoldOut}
-            className="btn w-full btn-primary inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn flex-1 btn-primary inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
           >
             <ShoppingCart size={14} /> {isSoldOut ? 'Sold out' : 'Add'}
           </button>

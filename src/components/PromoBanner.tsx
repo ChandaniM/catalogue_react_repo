@@ -39,11 +39,11 @@
 
 
 import { Link } from 'react-router-dom';
-import promoImage from '../assets/02.png';
+import promoImage from '../assets/filer image.png';
 
 const PromoBanner: React.FC = () => {
   return (
-    <section className="w-full mt-10">
+    <section className="w-full mt-10" style={{ marginBottom: '3rem' }}>
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="overflow-hidden rounded-[16px] border border-[#ede4dc] bg-[#f5efe9]">
           <div className="grid items-center md:grid-cols-[250px_minmax(0,1fr)_260px]">

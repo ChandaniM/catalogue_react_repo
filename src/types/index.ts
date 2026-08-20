@@ -31,7 +31,10 @@ export interface Slide {
   id: string;
   title: string;
   subtitle: string;
-  button: string;
+  button?: string;
+  buttonUrl?: string;
+  button2?: string;
+  button2Url?: string;
   image: string;
 }
 

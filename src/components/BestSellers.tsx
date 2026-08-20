@@ -9,7 +9,7 @@ const BestSellers: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [pos, setPos] = useState(0);
-  const { cart } = useShop();
+  const { cart, addToCart } = useShop();
 
   useEffect(() => {
     const load = async () => {
@@ -34,13 +34,13 @@ const BestSellers: React.FC = () => {
   const next = () => setPos((p) => Math.min(Math.max(0, products.length - visible), p + 1));
 
   return (
-    <section className="max-w-7xl mx-auto px-6 mt-10">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-10">
       <div className="flex items-center justify-between mb-6">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-gray-500 mb-2">Best Sellers</p>
           <h2 className="text-xl font-semibold text-black">Our most loved gifts</h2>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="hidden items-center gap-3 sm:flex">
           <button onClick={prev} aria-label="Previous" className="rounded-full bg-white border border-gray-200 p-2 shadow-sm">
             <ChevronLeft size={18} />
           </button>
@@ -54,11 +54,18 @@ const BestSellers: React.FC = () => {
         <div className="h-48 rounded-2xl bg-gray-50 animate-pulse" />
       ) : (
         <div className="relative">
-          <div className="overflow-hidden">
+          <div className="grid grid-cols-2 gap-3 sm:hidden">
+            {products.slice(0, 4).map((product) => (
+              <div key={product.id} className="min-w-0">
+                <SimpleProductCard product={product} cartQuantity={cart.find((c) => c.productId === product.id)?.quantity || 0} onAddToCart={addToCart} />
+              </div>
+            ))}
+          </div>
+          <div className="hidden overflow-hidden sm:block">
             <div className="flex gap-4 transition-transform duration-500" style={{ transform: `translateX(-${pos * (100 / visible)}%)`, width: `${(products.length / visible) * 100}%` }}>
               {products.map((product) => (
-                <div key={product.id} style={{ flex: `0 0 ${100 / Math.min(products.length, visible)}%` }} className="min-w-[220px] max-w-[280px]">
-                  <SimpleProductCard product={product} cartQuantity={cart.find((c) => c.productId === product.id)?.quantity || 0} onAddToCart={() => { /* intentionally left blank; SimpleProductCard's button will call provided handler */ }} />
+                <div key={product.id} style={{ flex: `0 0 ${100 / Math.min(products.length, visible)}%` }} className="min-w-0 max-w-[280px]">
+                  <SimpleProductCard product={product} cartQuantity={cart.find((c) => c.productId === product.id)?.quantity || 0} onAddToCart={addToCart} />
                 </div>
               ))}
             </div>
