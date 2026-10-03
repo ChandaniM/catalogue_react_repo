@@ -8,6 +8,7 @@ import { fetchProductById } from '../lib/products';
 import { fetchCategories } from '../services/categories';
 import { useShop } from '../context/ShopContext';
 import { Trash2 } from 'lucide-react';
+import { WHATSAPP_PHONE_NUMBER } from '../lib/contact';
 
 // Icons
 import { FaWhatsapp, FaInstagram, FaShieldAlt, FaLeaf, FaStar, FaGift, FaShoppingCart } from 'react-icons/fa';
@@ -69,7 +70,7 @@ const ProductDetail = () => {
 
   const shareWhatsApp = () => {
     const text = encodeURIComponent(getCartSummaryText());
-    window.open(`https://wa.me/?text=${text}`, '_blank');
+    window.open(`https://wa.me/${WHATSAPP_PHONE_NUMBER}?text=${text}`, '_blank');
   };
 
   const shareInstagram = async () => {
