@@ -84,7 +84,12 @@ const NavBar: React.FC = () => {
               />
             </div>
 
-            <button type="button" className="lg:hidden p-2 text-black">
+            <button
+              type="button"
+              onClick={() => navigate('/search')}
+              aria-label="Search products"
+              className="lg:hidden p-2 text-black"
+            >
               <Search size={18} />
             </button>
 
