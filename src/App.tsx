@@ -31,7 +31,6 @@ function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/wishlist" element={<WishlistPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/share/:token" element={<ShareSelectionPage />} />
           <Route path="/admin" element={<Admin />} />
