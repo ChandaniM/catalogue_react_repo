@@ -8,6 +8,7 @@ import { fetchProducts, addProduct, updateProduct, deleteProduct, fetchTags, add
 import { fetchCategories, addCategory, updateCategory, deleteCategory, slugify } from '../services/categories';
 import { fetchOccasions, saveOccasions } from '../services/occasions';
 import { fetchSlides, saveSlides } from '../lib/slides';
+import { fetchSales, saveSales, type SaleRecord } from '../services/sales';
 import { uploadImage } from '../lib/cloudinary';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import Loading from '../components/Loading';
@@ -18,21 +19,6 @@ import {
 } from 'lucide-react';
 
 type ActiveView = 'products' | 'categories' | 'tags' | 'occasions' | 'sales' | 'analytics' | 'slides';
-
-type SaleRecord = {
-  id: string;
-  productId: string;
-  productName: string;
-  quantity: number;
-  amount: number;
-  paymentMethod: string;
-  customerName: string;
-  status: 'Paid' | 'Pending' | 'Cancelled';
-  notes: string;
-  createdAt: string;
-  // whether this sale has been applied to inventory (true when status was Paid and we adjusted stock)
-  appliedInventory?: boolean;
-};
 
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -144,17 +130,15 @@ const Admin = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [productsData, tagsData, categoriesData, occasionData, slidesData] = await Promise.all([
-        fetchProducts(), fetchTags(), fetchCategories(), fetchOccasions(), fetchSlides(),
+      const [productsData, tagsData, categoriesData, occasionData, slidesData, salesData] = await Promise.all([
+        fetchProducts(), fetchTags(), fetchCategories(), fetchOccasions(), fetchSlides(), fetchSales(),
       ]);
       setProducts(productsData);
       setTags(tagsData);
       setCategories(categoriesData);
       setOccasions(occasionData);
       setSlides(slidesData);
-      const storedSalesRaw = JSON.parse(localStorage.getItem('uphar_sales') || '[]');
-      const storedSales = (storedSalesRaw as SaleRecord[]).map((s) => ({ appliedInventory: false, ...s }));
-      setSales(storedSales);
+      setSales(salesData.map((sale) => ({ appliedInventory: false, ...sale })));
     } catch (err) {
       console.error('Error loading inventory:', err);
     } finally {
@@ -288,9 +272,9 @@ const Admin = () => {
     setDeleteConfirm(null);
   };
 
-  const saveSalesRecords = (nextSales: SaleRecord[]) => {
-    setSales(nextSales);
-    localStorage.setItem('uphar_sales', JSON.stringify(nextSales));
+  const saveSalesRecords = async (nextSales: SaleRecord[]) => {
+    const savedSales = await saveSales(nextSales);
+    setSales(savedSales);
   };
 
   const resetSaleForm = () => {
@@ -421,7 +405,7 @@ const Admin = () => {
             : sale
         );
 
-        saveSalesRecords(updatedSales);
+        await saveSalesRecords(updatedSales);
         resetSaleForm();
         setMessage({ type: 'success', text: `Sale updated for ${selectedProduct.name}.` });
         return;
@@ -458,7 +442,7 @@ const Admin = () => {
       };
 
       const nextSales = [nextSale, ...sales];
-      saveSalesRecords(nextSales);
+      await saveSalesRecords(nextSales);
       resetSaleForm();
       setMessage({ type: 'success', text: `${quantity} unit(s) of ${selectedProduct.name} recorded as sold.` });
     } catch (error) {
@@ -479,7 +463,7 @@ const Admin = () => {
     }
 
     const nextSales = sales.filter((sale) => sale.id !== id);
-    saveSalesRecords(nextSales);
+    await saveSalesRecords(nextSales);
     setDeleteConfirm(null);
   };
 
@@ -982,7 +966,7 @@ const Admin = () => {
                       <th className="py-4 px-4 text-left font-medium">Category</th>
                       <th className="py-4 px-4 text-left font-medium">Tags</th>
                       <th className="py-4 px-4 text-right font-medium">Stock</th>
-                      <th className="py-4 px-4 text-right font-medium">Price</th>
+                      <th className="py-4 px-4 text-right font-medium">Sell Price</th>
                       <th className="py-4 px-4"></th>
                     </tr>
                   </thead>

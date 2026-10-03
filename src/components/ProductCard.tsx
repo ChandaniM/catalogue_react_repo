@@ -1,18 +1,19 @@
 import { Link } from 'react-router-dom';
 import type { Product } from '../types';
 import { useShop } from '../context/ShopContext';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Trash2 } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
-  const { addToCart } = useShop();
+  const { addToCart, cart, removeFromCart } = useShop();
+  const cartQuantity = cart.find((item) => item.productId === product.id)?.quantity ?? 0;
   const isSoldOut = (product.quantity ?? 0) <= 0;
 
   return (
-    <div className="product-card block bg-white rounded-xl sm:rounded-2xl md:rounded-3xl overflow-hidden shadow-md hover:shadow-2xl hover:-translate-y-1 md:hover:-translate-y-2 transition-all duration-300 border-2 border-transparent">
+    <div className="product-card flex h-full flex-col bg-white rounded-xl sm:rounded-2xl md:rounded-3xl overflow-hidden shadow-md hover:shadow-2xl hover:-translate-y-1 md:hover:-translate-y-2 transition-all duration-300 border-2 border-transparent">
       <Link to={`/product/${product.id}`} className="no-underline">
         <div className="relative overflow-hidden aspect-square">
           <img
@@ -33,21 +34,25 @@ const ProductCard = ({ product }: ProductCardProps) => {
         </div>
       </Link>
 
-      <div className="p-2.5 sm:p-4 md:p-5 lg:p-6 pb-3 sm:pb-5 md:pb-6 bg-gradient-to-b from-white to-[var(--primary-light)]/30">
-        <h3 className="font-display text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl font-semibold text-[var(--charcoal)] mb-0.5 sm:mb-1 md:mb-2 leading-tight line-clamp-2">
+      <div className="flex flex-1 flex-col p-2.5 sm:p-4 md:p-5 lg:p-6 pb-3 sm:pb-5 md:pb-6 bg-gradient-to-b from-white to-[var(--primary-light)]/30">
+        <h3 className="min-h-[2.5em] font-display text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl font-semibold text-[var(--charcoal)] mb-0.5 sm:mb-1 md:mb-2 leading-tight line-clamp-2">
           {product.name}
         </h3>
-        <p className="text-[10px] sm:text-xs md:text-sm lg:text-base text-gray-500 line-clamp-2 leading-relaxed">
+        <p className="min-h-[3.25em] text-[10px] sm:text-xs md:text-sm lg:text-base text-gray-500 line-clamp-2 leading-relaxed">
           {product.description}
         </p>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
+        <div className="mt-auto flex items-center justify-between gap-3 pt-4">
+          <span className="text-sm sm:text-base font-semibold text-[var(--charcoal)]">
+            ₹{product.sellingPrice.toLocaleString('en-IN')}
+          </span>
           <button
-            onClick={() => !isSoldOut && addToCart(product.id)}
-            disabled={isSoldOut}
-            className="btn flex-1 btn-primary inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => cartQuantity > 0 ? removeFromCart(product.id) : addToCart(product.id)}
+            disabled={isSoldOut && cartQuantity === 0}
+            className={`btn flex-1 inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60 ${cartQuantity > 0 ? 'bg-red-700 text-white hover:bg-red-800' : 'btn-primary'}`}
           >
-            <ShoppingCart size={14} /> {isSoldOut ? 'Sold out' : 'Add'}
+            {cartQuantity > 0 ? <Trash2 size={14} /> : <ShoppingCart size={14} />}
+            {cartQuantity > 0 ? 'Remove from cart' : isSoldOut ? 'Sold out' : 'Add to cart'}
           </button>
         </div>
       </div>

@@ -1,5 +1,4 @@
 import Footer from '../components/Footer';
-import ShippingBar from '../components/ShippingBar';
 import NavBar from '../components/NavBar';
 import HeroSlider from '../components/HeroSlider';
 import CategorySection from '../components/CategorySection';
@@ -12,7 +11,6 @@ const Catalogue = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <ShippingBar />
       <NavBar />
       <main className="flex-1">
         {/* Hero slider with 3 slides */}

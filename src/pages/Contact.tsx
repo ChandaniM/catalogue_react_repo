@@ -1,6 +1,5 @@
 import Footer from '../components/Footer';
 import NavBar from '../components/NavBar';
-import ShippingBar from '../components/ShippingBar';
 import { useState } from 'react';
 
 const Contact: React.FC = () => {
@@ -21,7 +20,6 @@ const Contact: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <ShippingBar />
       <NavBar />
       <main className="flex-1 max-w-3xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-semibold mb-4">Contact Us</h1>
