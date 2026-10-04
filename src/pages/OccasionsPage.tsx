@@ -8,6 +8,7 @@ import Footer from '../components/Footer';
 import Loading from '../components/Loading';
 import { fetchOccasions } from '../services/occasions';
 import type { Occasion } from '../types';
+import usePageMetadata from '../hooks/usePageMetadata';
 
 const iconNameMap: Record<string, any> = {
   whatsapp: faWhatsapp,
@@ -42,6 +43,10 @@ const renderOccasionIcon = (icon?: string, altLabel?: string) => {
 };
 
 const OccasionsPage: React.FC = () => {
+  usePageMetadata(
+    'Gifts by Occasion | Uphar The Gift Shop',
+    'Explore thoughtful gifts for birthdays, anniversaries, weddings, new arrivals, and other special occasions.'
+  );
   const [occasions, setOccasions] = useState<Occasion[]>([]);
   const [loading, setLoading] = useState(true);
 

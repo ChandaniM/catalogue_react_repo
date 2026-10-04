@@ -7,6 +7,7 @@ import ProductCard from '../components/ProductCard';
 import Loading from '../components/Loading';
 import { fetchProducts } from '../lib/products';
 import type { Product } from '../types';
+import usePageMetadata from '../hooks/usePageMetadata';
 
 const SearchPage = () => {
   const [searchParams] = useSearchParams();
@@ -14,6 +15,12 @@ const SearchPage = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const query = searchParams.get('q') || '';
+  usePageMetadata(
+    query.trim() ? `Search results for ${query.trim()} | Uphar The Gift Shop` : 'Search Gifts | Uphar The Gift Shop',
+    query.trim()
+      ? `Search gift products for ${query.trim()} at Uphar The Gift Shop.`
+      : 'Search thoughtfully curated gifts at Uphar The Gift Shop.'
+  );
 
   useEffect(() => {
     const load = async () => {

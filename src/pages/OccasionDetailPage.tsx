@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import Loading from '../components/Loading';
 import { fetchProducts } from '../lib/products';
 import KeychainProductCard from '../components/KeychainProductCard';
+import usePageMetadata from '../hooks/usePageMetadata';
 
 const OccasionDetailPage: React.FC = () => {
   const { key } = useParams<{ key: string }>();
@@ -34,6 +35,11 @@ const OccasionDetailPage: React.FC = () => {
       return matchesTag || matchesOccasion;
     });
   }, [products, key]);
+  const occasionLabel = key?.replace(/-/g, ' ') || 'special occasion';
+  usePageMetadata(
+    `${occasionLabel.replace(/\b\w/g, (letter) => letter.toUpperCase())} Gifts | Uphar The Gift Shop`,
+    `Find thoughtful ${occasionLabel} gifts at Uphar The Gift Shop. Browse curated gift ideas for this special occasion.`
+  );
 
   if (loading) return (
     <div className="min-h-screen flex flex-col bg-white">

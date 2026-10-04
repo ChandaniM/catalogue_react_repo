@@ -7,6 +7,7 @@ import Loading from '../components/Loading';
 import { fetchProducts } from '../lib/products';
 import { useShop } from '../context/ShopContext';
 import type { Product } from '../types';
+import usePageMetadata from '../hooks/usePageMetadata';
 
 interface ProductListingPageProps {
   title: string;
@@ -17,6 +18,10 @@ interface ProductListingPageProps {
 }
 
 const ProductListingPage = ({ title, description, filter, hideIfDisabled = false, disabledMessage }: ProductListingPageProps) => {
+  usePageMetadata(
+    `${title} | Uphar The Gift Shop`,
+    description || `Shop ${title.toLowerCase()} at Uphar The Gift Shop. Explore thoughtfully curated gifts for every occasion.`
+  );
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const { searchQuery } = useShop();

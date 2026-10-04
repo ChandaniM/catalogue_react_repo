@@ -9,6 +9,7 @@ import { fetchCategories } from '../services/categories';
 import { useShop } from '../context/ShopContext';
 import { Trash2 } from 'lucide-react';
 import { WHATSAPP_PHONE_NUMBER } from '../lib/contact';
+import usePageMetadata from '../hooks/usePageMetadata';
 
 // Icons
 import { FaWhatsapp, FaInstagram, FaShieldAlt, FaLeaf, FaStar, FaGift, FaShoppingCart } from 'react-icons/fa';
@@ -18,6 +19,10 @@ const ProductDetail = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
+  usePageMetadata(
+    product ? `${product.name} | Uphar The Gift Shop` : 'Gift Product | Uphar The Gift Shop',
+    product?.description || 'Explore thoughtfully curated gifts at Uphar The Gift Shop.'
+  );
 
   useEffect(() => {
     const loadProduct = async () => {

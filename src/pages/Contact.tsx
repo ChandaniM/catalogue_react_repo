@@ -1,8 +1,13 @@
 import Footer from '../components/Footer';
 import NavBar from '../components/NavBar';
 import { useState } from 'react';
+import usePageMetadata from '../hooks/usePageMetadata';
 
 const Contact: React.FC = () => {
+  usePageMetadata(
+    'Contact Uphar The Gift Shop',
+    'Contact Uphar The Gift Shop with questions, custom gift requests, or feedback.'
+  );
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');

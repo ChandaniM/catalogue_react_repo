@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /add-product
+Disallow: /cart
+Disallow: /search
+Disallow: /share/
+Disallow: /wishlist
+
+Sitemap: https://upharthegiftshop.netlify.app/sitemap.xml
