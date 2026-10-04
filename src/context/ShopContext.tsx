@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { CheckCircle2, X } from 'lucide-react';
 import type { FeatureFlags } from '../lib/featureFlags';
 import { DEFAULT_FEATURE_FLAGS, loadFeatureFlags, saveFeatureFlags } from '../lib/featureFlags';
 
@@ -30,18 +31,41 @@ const ShopContext = createContext<ShopContextValue | undefined>(undefined);
 const CART_STORAGE_KEY = 'uphar_cart';
 const WISHLIST_STORAGE_KEY = 'uphar_wishlist';
 
+type CartToast = {
+  id: number;
+  message: string;
+};
+
 export const ShopProvider = ({ children }: { children: ReactNode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const cartRef = useRef(cart);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>(DEFAULT_FEATURE_FLAGS);
   const [searchQuery, setSearchQuery] = useState('');
+  const [cartToast, setCartToast] = useState<CartToast | null>(null);
+  const cartToastId = useRef(0);
+
+  const commitCart = (nextCart: CartItem[]) => {
+    cartRef.current = nextCart;
+    setCart(nextCart);
+  };
+
+  useEffect(() => {
+    if (!cartToast) return;
+
+    const timeout = window.setTimeout(() => setCartToast(null), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [cartToast]);
 
   useEffect(() => {
     const storedCart = localStorage.getItem(CART_STORAGE_KEY);
     if (storedCart) {
       try {
-        setCart(JSON.parse(storedCart));
+        const parsedCart = JSON.parse(storedCart) as CartItem[];
+        cartRef.current = parsedCart;
+        setCart(parsedCart);
       } catch {
+        cartRef.current = [];
         setCart([]);
       }
     }
@@ -96,46 +120,45 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
   const isProductSoldOut = (productId: string) => getProductStock(productId) <= 0;
 
   const addToCart = (productId: string, quantity = 1) => {
-    if (quantity <= 0 || isProductSoldOut(productId)) {
+    const stock = getProductStock(productId);
+    const currentCart = cartRef.current;
+    const existing = currentCart.find((item) => item.productId === productId);
+    const newQuantity = (existing?.quantity ?? 0) + quantity;
+
+    if (quantity <= 0 || stock <= 0 || newQuantity > stock) {
       return;
     }
 
-    setCart((current) => {
-      const stock = getProductStock(productId);
-      const existing = current.find((item) => item.productId === productId);
-      const newQuantity = existing ? existing.quantity + quantity : quantity;
-
-      if (stock <= 0 || newQuantity > stock) {
-        return current;
-      }
-
-      if (existing) {
-        return current.map((item) =>
+    commitCart(existing
+      ? currentCart.map((item) =>
           item.productId === productId ? { ...item, quantity: newQuantity } : item
-        );
-      }
-      return [...current, { productId, quantity }];
+        )
+      : [...currentCart, { productId, quantity }]);
+    cartToastId.current += 1;
+    setCartToast({
+      id: cartToastId.current,
+      message: quantity === 1 ? 'Added to cart' : `${quantity} items added to cart`,
     });
   };
 
   const updateCartQuantity = (productId: string, quantity: number) => {
     if (isProductSoldOut(productId)) {
-      setCart((current) => current.filter((item) => item.productId !== productId));
+      commitCart(cartRef.current.filter((item) => item.productId !== productId));
       return;
     }
 
     const stock = getProductStock(productId);
     const safeQuantity = Math.min(Math.max(quantity, 0), stock || 1);
 
-    setCart((current) =>
-      current
+    commitCart(
+      cartRef.current
         .map((item) => (item.productId === productId ? { ...item, quantity: safeQuantity } : item))
         .filter((item) => item.quantity > 0)
     );
   };
 
   const removeFromCart = (productId: string) => {
-    setCart((current) => current.filter((item) => item.productId !== productId));
+    commitCart(cartRef.current.filter((item) => item.productId !== productId));
   };
 
   const toggleCartItem = (productId: string) => {
@@ -143,16 +166,14 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    setCart((current) => {
-      const existing = current.find((item) => item.productId === productId);
-      if (existing) {
-        return current.filter((item) => item.productId !== productId);
-      }
-      return [...current, { productId, quantity: 1 }];
-    });
+    const currentCart = cartRef.current;
+    const existing = currentCart.find((item) => item.productId === productId);
+    commitCart(existing
+      ? currentCart.filter((item) => item.productId !== productId)
+      : [...currentCart, { productId, quantity: 1 }]);
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => commitCart([]);
 
   const toggleWishlist = (productId: string) => {
     setWishlist((current) =>
@@ -187,6 +208,25 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
       }}
     >
       {children}
+      {cartToast && (
+        <div
+          key={cartToast.id}
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-5 right-5 z-[100] flex max-w-[calc(100vw-2.5rem)] items-center gap-3 rounded-xl bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-xl"
+        >
+          <CheckCircle2 size={20} className="shrink-0 text-emerald-400" aria-hidden="true" />
+          <span>{cartToast.message}</span>
+          <button
+            type="button"
+            onClick={() => setCartToast(null)}
+            aria-label="Dismiss notification"
+            className="ml-2 rounded p-1 text-gray-300 transition hover:bg-white/10 hover:text-white"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </ShopContext.Provider>
   );
 };

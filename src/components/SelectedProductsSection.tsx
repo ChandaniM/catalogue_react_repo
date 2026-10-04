@@ -2,6 +2,7 @@ import { MessageCircle } from "lucide-react";
 import type { Product } from "../types";
 import type { CartItem } from "../context/ShopContext";
 import { createShareToken, getShareUrl } from "../lib/share";
+import { WHATSAPP_PHONE_NUMBER } from "../lib/contact";
 
 interface SelectedProductsSectionProps {
   products: Product[];
@@ -46,7 +47,7 @@ const SelectedProductsSection = ({
   );
 
   const shareLink = getShareUrl(shareToken);
-  const whatsappUrl = `https://wa.me/7700083352?text=${encodeURIComponent(`I selected these Uphar items:%0A${selectedProducts.map((item) => `• ${item.product.name} x${item.quantity}`).join("%0A")}%0A%0AView details: ${shareLink}`)}`;
+  const whatsappUrl = `https://wa.me/${WHATSAPP_PHONE_NUMBER}?text=${encodeURIComponent(`I selected these Uphar items:%0A${selectedProducts.map((item) => `• ${item.product.name} x${item.quantity}`).join("%0A")}%0A%0AView details: ${shareLink}`)}`;
 
   if (selectedProducts.length === 0) {
     return null;

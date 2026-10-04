@@ -7,6 +7,9 @@ import type { Product, Category } from '../types';
 import { fetchProductById } from '../lib/products';
 import { fetchCategories } from '../services/categories';
 import { useShop } from '../context/ShopContext';
+import { Trash2 } from 'lucide-react';
+import { WHATSAPP_PHONE_NUMBER } from '../lib/contact';
+import usePageMetadata from '../hooks/usePageMetadata';
 
 // Icons
 import { FaWhatsapp, FaInstagram, FaShieldAlt, FaLeaf, FaStar, FaGift, FaShoppingCart } from 'react-icons/fa';
@@ -16,6 +19,10 @@ const ProductDetail = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
+  usePageMetadata(
+    product ? `${product.name} | Uphar The Gift Shop` : 'Gift Product | Uphar The Gift Shop',
+    product?.description || 'Explore thoughtfully curated gifts at Uphar The Gift Shop.'
+  );
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -41,7 +48,8 @@ const ProductDetail = () => {
     loadProduct();
   }, [id]);
 
-  const { addToCart } = useShop();
+  const { addToCart, cart, removeFromCart } = useShop();
+  const cartQuantity = cart.find((item) => item.productId === product?.id)?.quantity ?? 0;
 
   const getCartSummaryText = (): string => {
     try {
@@ -67,7 +75,7 @@ const ProductDetail = () => {
 
   const shareWhatsApp = () => {
     const text = encodeURIComponent(getCartSummaryText());
-    window.open(`https://wa.me/?text=${text}`, '_blank');
+    window.open(`https://wa.me/${WHATSAPP_PHONE_NUMBER}?text=${text}`, '_blank');
   };
 
   const shareInstagram = async () => {
@@ -170,6 +178,9 @@ const ProductDetail = () => {
 
 
               <p className="mt-4 text-gray-600 max-w-xl">{product.description}</p>
+              <p className="mt-5 text-2xl font-semibold text-black">
+                ₹{product.sellingPrice.toLocaleString('en-IN')}
+              </p>
 
               <div className="mt-6">
                 <div className="flex items-center gap-3">
@@ -226,11 +237,11 @@ const ProductDetail = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => addToCart(product.id)}
-                  className="btn btn-primary btn-lg w-full sm:w-auto inline-flex items-center gap-3 justify-center"
+                  onClick={() => cartQuantity > 0 ? removeFromCart(product.id) : addToCart(product.id)}
+                  className={`btn btn-lg w-full sm:w-auto inline-flex items-center gap-3 justify-center ${cartQuantity > 0 ? 'bg-red-700 text-white hover:bg-red-800' : 'btn-primary'}`}
                 >
-                  <FaShoppingCart className="text-lg" />
-                  <span className="text-sm">Add to cart</span>
+                  {cartQuantity > 0 ? <Trash2 size={18} aria-hidden="true" /> : <FaShoppingCart className="text-lg" />}
+                  <span className="text-sm">{cartQuantity > 0 ? 'Remove from cart' : 'Add to cart'}</span>
                 </button>
 
               </div>

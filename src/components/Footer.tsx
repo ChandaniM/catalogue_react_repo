@@ -1,6 +1,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faInstagram, faWhatsapp } from '@fortawesome/free-brands-svg-icons';
 import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import { WHATSAPP_PHONE_NUMBER } from '../lib/contact';
 
 const Footer = () => {
   return (
@@ -33,7 +34,7 @@ const Footer = () => {
                 <FontAwesomeIcon icon={faInstagram} className='text-base' />
               </a>
               <a
-                href='https://wa.me/917700083353'
+                href={`https://wa.me/${WHATSAPP_PHONE_NUMBER}`}
                 aria-label='WhatsApp'
                 target='_blank'
                 rel='noreferrer'

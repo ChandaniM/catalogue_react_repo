@@ -6,9 +6,10 @@ interface FeaturedProductsProps {
   products: any[];
   cartItems: CartItem[];
   onAddToCart: (id: string) => void;
+  onRemoveFromCart: (id: string) => void;
 }
 
-const FeaturedProducts = ({ products, cartItems, onAddToCart }: FeaturedProductsProps) => {
+const FeaturedProducts = ({ products, cartItems, onAddToCart, onRemoveFromCart }: FeaturedProductsProps) => {
   return (
     <section className="max-w-7xl mx-auto px-6 mt-8 pb-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -29,6 +30,7 @@ const FeaturedProducts = ({ products, cartItems, onAddToCart }: FeaturedProducts
               product={p}
               cartQuantity={cartEntry?.quantity ?? 0}
               onAddToCart={onAddToCart}
+              onRemoveFromCart={onRemoveFromCart}
             />
           );
         })}

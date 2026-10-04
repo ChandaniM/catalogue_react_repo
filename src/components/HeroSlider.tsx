@@ -47,7 +47,7 @@ const HeroSlider: React.FC = () => {
                 <div className="grid h-full items-center gap-5 lg:gap-8 lg:grid-cols-[1.1fr_1fr]">
                   <div className=" order-2 max-w-xl px-2 pb-16 pt-2 sm:px-4 sm:pb-14 sm:pt-6 lg:order-1 lg:px-0 lg:py-10" style={{ marginLeft: '1rem'}}>
                     <p className="text-[0.7rem] uppercase tracking-[0.32em] text-gray-600 mb-4">Thoughtfully curated gifts</p>
-                    <h2 className="font-serif text-3xl leading-[0.98] tracking-[-0.03em] text-black mb-4 sm:mb-5 sm:text-5xl lg:text-[4rem]">{slide.title}</h2>
+                    <h1 className="font-serif text-3xl leading-[0.98] tracking-[-0.03em] text-black mb-4 sm:mb-5 sm:text-5xl lg:text-[4rem]">{slide.title}</h1>
                     <p className="text-sm text-gray-700 leading-relaxed mb-5 sm:mb-7 sm:text-base">{slide.subtitle}</p>
                     {(slide.button || slide.button2) && (
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3">

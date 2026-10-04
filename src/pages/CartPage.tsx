@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import Loading from '../components/Loading';
 import { useShop } from '../context/ShopContext';
 import { fetchProducts } from '../lib/products';
+import { WHATSAPP_PHONE_NUMBER } from '../lib/contact';
 import type { Product } from '../types';
 
 const CartPage = () => {
@@ -80,7 +81,7 @@ const CartPage = () => {
 
   const handleWhatsAppShare = () => {
     const message = buildShareMessage();
-    const url = `https://wa.me/7700083352?text=${encodeURIComponent(message)}`;
+    const url = `https://wa.me/${WHATSAPP_PHONE_NUMBER}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
 

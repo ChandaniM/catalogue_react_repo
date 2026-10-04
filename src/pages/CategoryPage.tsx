@@ -9,6 +9,7 @@ import { fetchProducts } from '../lib/products';
 import { fetchCategoryBySlug } from '../services/categories';
 import KeychainProductCard from '../components/KeychainProductCard';
 import ProductCard from '../components/ProductCard';
+import usePageMetadata from '../hooks/usePageMetadata';
 
 const CategoryPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -21,6 +22,13 @@ const CategoryPage = () => {
   // Keychain-specific UI state
   const [activeFilter, setActiveFilter] = useState<'All' | 'Acrylic' | 'Anime' | 'Custom' | 'Metal'>('All');
   const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc' | 'featured'>('popular');
+  const categoryLabel = category?.name || slug?.replace(/-/g, ' ') || 'Gift';
+  usePageMetadata(
+    `${categoryLabel.replace(/\b\w/g, (letter) => letter.toUpperCase())} Gifts | Uphar The Gift Shop`,
+    category
+      ? `Shop ${category.name} gifts at Uphar The Gift Shop. Browse the available products and find a thoughtful gift for every occasion.`
+      : `Browse ${categoryLabel} gifts at Uphar The Gift Shop.`
+  );
 
   useEffect(() => {
     const loadData = async () => {

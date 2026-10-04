@@ -1,4 +1,4 @@
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { isProductNewArrival } from '../lib/products';
 
@@ -6,9 +6,10 @@ interface SimpleProductCardProps {
   product: any;
   cartQuantity: number;
   onAddToCart: (id: string) => void;
+  onRemoveFromCart: (id: string) => void;
 }
 
-const SimpleProductCard = ({ product, cartQuantity, onAddToCart }: SimpleProductCardProps) => {
+const SimpleProductCard = ({ product, cartQuantity, onAddToCart, onRemoveFromCart }: SimpleProductCardProps) => {
   const imageUrl = product.image || product.image_url || '';
   const showNewTag = isProductNewArrival(product, 7);
 
@@ -21,14 +22,20 @@ const SimpleProductCard = ({ product, cartQuantity, onAddToCart }: SimpleProduct
         </div>
 
         <div className="flex flex-1 flex-col p-3">
-          <div className="text-sm font-medium text-black hover:underline mb-2">{product.name}</div>
+          <div className="mb-2 min-h-[2.5em] line-clamp-2 text-sm font-medium text-black hover:underline">{product.name}</div>
+          <div className="mb-3 text-sm font-semibold text-black">₹{product.sellingPrice.toLocaleString('en-IN')}</div>
           <button
             type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddToCart(product.id); }}
-            className={`mt-auto flex min-h-11 w-full items-center justify-center gap-2 rounded-sm border px-3 py-2 text-sm font-semibold transition ${cartQuantity > 0 ? 'border-black bg-black text-white' : 'border-gray-200 bg-white text-black hover:border-black hover:bg-black hover:text-white'}`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (cartQuantity > 0) onRemoveFromCart(product.id);
+              else onAddToCart(product.id);
+            }}
+            className={`mt-auto flex min-h-11 w-full items-center justify-center gap-2 rounded-sm border px-3 py-2 text-sm font-semibold transition ${cartQuantity > 0 ? 'border-red-700 bg-red-700 text-white hover:border-red-800 hover:bg-red-800' : 'border-gray-200 bg-white text-black hover:border-black hover:bg-black hover:text-white'}`}
           >
-            <ShoppingCart size={16} />
-            {cartQuantity > 0 ? 'Add one more' : 'Add to cart'}
+            {cartQuantity > 0 ? <Trash2 size={16} /> : <ShoppingCart size={16} />}
+            {cartQuantity > 0 ? 'Remove from cart' : 'Add to cart'}
           </button>
         </div>
       </div>

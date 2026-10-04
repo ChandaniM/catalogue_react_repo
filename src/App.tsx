@@ -8,7 +8,6 @@ import Admin from './pages/Admin';
 import AddProduct from './pages/AddProduct';
 import CartPage from './pages/CartPage';
 import WishlistPage from './pages/WishlistPage';
-import CheckoutPage from './pages/CheckoutPage';
 import SearchPage from './pages/SearchPage';
 import Contact from './pages/Contact';
 import ProductListingPage from './pages/ProductListingPage';
@@ -31,7 +30,6 @@ function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/wishlist" element={<WishlistPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/share/:token" element={<ShareSelectionPage />} />
           <Route path="/admin" element={<Admin />} />

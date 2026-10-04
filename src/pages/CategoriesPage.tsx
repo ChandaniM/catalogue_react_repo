@@ -6,8 +6,13 @@ import Loading from '../components/Loading';
 import CategoryCard from '../components/CategoryCard';
 import { fetchCategories } from '../services/categories';
 import type { Category } from '../types';
+import usePageMetadata from '../hooks/usePageMetadata';
 
 const CategoriesPage = () => {
+  usePageMetadata(
+    'Gift Categories | Uphar The Gift Shop',
+    'Browse gift categories at Uphar The Gift Shop and find a thoughtful gift for every occasion.'
+  );
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 

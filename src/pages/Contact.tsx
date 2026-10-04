@@ -1,9 +1,13 @@
 import Footer from '../components/Footer';
 import NavBar from '../components/NavBar';
-import ShippingBar from '../components/ShippingBar';
 import { useState } from 'react';
+import usePageMetadata from '../hooks/usePageMetadata';
 
 const Contact: React.FC = () => {
+  usePageMetadata(
+    'Contact Uphar The Gift Shop',
+    'Contact Uphar The Gift Shop with questions, custom gift requests, or feedback.'
+  );
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -21,7 +25,6 @@ const Contact: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <ShippingBar />
       <NavBar />
       <main className="flex-1 max-w-3xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-semibold mb-4">Contact Us</h1>

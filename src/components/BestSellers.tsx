@@ -9,7 +9,7 @@ const BestSellers: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [pos, setPos] = useState(0);
-  const { cart, addToCart } = useShop();
+  const { cart, addToCart, removeFromCart } = useShop();
 
   useEffect(() => {
     const load = async () => {
@@ -57,7 +57,7 @@ const BestSellers: React.FC = () => {
           <div className="grid grid-cols-2 gap-3 sm:hidden">
             {products.slice(0, 4).map((product) => (
               <div key={product.id} className="min-w-0">
-                <SimpleProductCard product={product} cartQuantity={cart.find((c) => c.productId === product.id)?.quantity || 0} onAddToCart={addToCart} />
+                <SimpleProductCard product={product} cartQuantity={cart.find((c) => c.productId === product.id)?.quantity || 0} onAddToCart={addToCart} onRemoveFromCart={removeFromCart} />
               </div>
             ))}
           </div>
@@ -65,7 +65,7 @@ const BestSellers: React.FC = () => {
             <div className="flex gap-4 transition-transform duration-500" style={{ transform: `translateX(-${pos * (100 / visible)}%)`, width: `${(products.length / visible) * 100}%` }}>
               {products.map((product) => (
                 <div key={product.id} style={{ flex: `0 0 ${100 / Math.min(products.length, visible)}%` }} className="min-w-0 max-w-[280px]">
-                  <SimpleProductCard product={product} cartQuantity={cart.find((c) => c.productId === product.id)?.quantity || 0} onAddToCart={addToCart} />
+                  <SimpleProductCard product={product} cartQuantity={cart.find((c) => c.productId === product.id)?.quantity || 0} onAddToCart={addToCart} onRemoveFromCart={removeFromCart} />
                 </div>
               ))}
             </div>

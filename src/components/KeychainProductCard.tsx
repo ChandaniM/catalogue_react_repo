@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Heart } from 'lucide-react';
+import { ShoppingCart, Heart, Trash2 } from 'lucide-react';
 import type { Product } from '../types';
 import { useShop } from '../context/ShopContext';
 
@@ -8,14 +8,15 @@ interface Props {
 }
 
 const KeychainProductCard = ({ product }: Props) => {
-  const { addToCart, wishlist, toggleWishlist } = useShop();
+  const { addToCart, cart, removeFromCart, wishlist, toggleWishlist } = useShop();
+  const cartQuantity = cart.find((item) => item.productId === product.id)?.quantity ?? 0;
   const inWishlist = wishlist.includes(product.id);
   const isSoldOut = (product.quantity ?? 0) <= 0;
 
   return (
-    <div className="bg-white rounded-lg border border-[#efe7df] overflow-hidden">
+    <div className="flex h-full flex-col bg-white rounded-lg border border-[#efe7df] overflow-hidden">
       <Link to={`/product/${product.id}`} className="no-underline">
-        <div className="h-52 md:h-56 lg:h-64 w-full bg-[#faf6f2] flex items-center justify-center overflow-hidden">
+        <div className="relative h-52 md:h-56 lg:h-64 w-full bg-[#faf6f2] flex items-center justify-center overflow-hidden">
           {product.image_url ? (
             <img src={product.image_url} alt={product.name} className="h-full w-full object-contain transition-transform duration-500 hover:scale-105" />
           ) : (
@@ -24,27 +25,28 @@ const KeychainProductCard = ({ product }: Props) => {
         </div>
       </Link>
 
-      <div className="p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex flex-1 items-start justify-between gap-3">
+          <div className="min-w-0">
             <Link to={`/product/${product.id}`} className="no-underline">
-              <h3 className="font-serif text-base text-[#262423] mb-1">{product.name}</h3>
+              <h3 className="mb-1 min-h-[3rem] line-clamp-2 font-serif text-base text-[#262423]">{product.name}</h3>
             </Link>
-            <div className="text-xs text-gray-500">{(product.tags || []).slice(0,2).join(', ')}</div>
+            <div className="line-clamp-1 min-h-[1rem] text-xs text-gray-500">{(product.tags || []).slice(0,2).join(', ')}</div>
           </div>
-          <button onClick={() => toggleWishlist(product.id)} aria-label="Wishlist" className="p-2 rounded-full border border-gray-100 text-gray-600 hover:bg-[#fff7ed] transition">
+          <button onClick={() => toggleWishlist(product.id)} aria-label="Wishlist" className="shrink-0 p-2 rounded-full border border-gray-100 text-gray-600 hover:bg-[#fff7ed] transition">
             <Heart size={16} className={`${inWishlist ? 'text-red-500' : 'text-gray-500'}`} />
           </button>
         </div>
 
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-auto flex items-center justify-between pt-4">
            <div className="text-lg font-semibold text-[#1f1f1f]">₹{product.sellingPrice}</div>
            <button
-             onClick={() => !isSoldOut && addToCart(product.id)}
-             disabled={isSoldOut}
-             className="btn btn-primary inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+             onClick={() => cartQuantity > 0 ? removeFromCart(product.id) : addToCart(product.id)}
+             disabled={isSoldOut && cartQuantity === 0}
+             className={`btn inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60 ${cartQuantity > 0 ? 'bg-red-700 text-white hover:bg-red-800' : 'btn-primary'}`}
            >
-             <ShoppingCart size={14} /> {isSoldOut ? 'Sold out' : 'Add'}
+             {cartQuantity > 0 ? <Trash2 size={14} /> : <ShoppingCart size={14} />}
+             {cartQuantity > 0 ? 'Remove from cart' : isSoldOut ? 'Sold out' : 'Add to cart'}
            </button>
         </div>
       </div>
