@@ -86,7 +86,6 @@ const NavBar: React.FC = () => {
 
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             {!isSearchPage && <form onSubmit={handleSearchSubmit} className="hidden lg:flex items-center gap-2 w-[340px] rounded-full border border-[#e7e2dc] bg-[#f5f3f1] px-4 py-2.5">
-              <Search size={16} className="text-gray-500" />
               <input
                 type="text"
                 value={searchQuery}
