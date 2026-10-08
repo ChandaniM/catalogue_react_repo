@@ -18,35 +18,29 @@ const applySlideDefaults = (slide: Partial<Slide>): Slide => ({
   image: slide.image || '',
 });
 
+const saveLocalSlides = (slides: Slide[]) => {
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(slides));
+};
+
 const getLocalSlides = (): Slide[] => {
   const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-  let slides: Slide[];
 
   if (stored) {
     try {
-      slides = JSON.parse(stored).map((slide: Partial<Slide>) => applySlideDefaults(slide));
-    } catch (err) {
-      console.warn('Invalid slide cache, reseeding defaults.', err);
-      slides = DUMMY_SLIDES.map((slide) => applySlideDefaults(slide));
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(slides));
+      const parsed: unknown = JSON.parse(stored);
+      if (!Array.isArray(parsed)) {
+        throw new Error('Slide cache must be an array');
+      }
+      return parsed.map((slide: Partial<Slide>) => applySlideDefaults(slide));
+    } catch (error) {
+      console.error('Unable to read cached slides; using default slides:', error);
     }
-  } else {
-    slides = DUMMY_SLIDES.map((slide) => applySlideDefaults(slide));
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(slides));
   }
 
-  if (!localStorage.getItem(MIGRATION_KEY)) {
-    const seeded = DUMMY_SLIDES.map((slide) => applySlideDefaults(slide));
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(seeded));
-    localStorage.setItem(MIGRATION_KEY, 'true');
-    return seeded;
-  }
-
-  return slides;
-};
-
-const saveLocalSlides = (slides: Slide[]) => {
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(slides));
+  const defaults = DUMMY_SLIDES.map((slide) => applySlideDefaults(slide));
+  saveLocalSlides(defaults);
+  localStorage.setItem(MIGRATION_KEY, 'true');
+  return defaults;
 };
 
 const mapFromDb = (row: Record<string, unknown>): Slide => applySlideDefaults({
@@ -67,8 +61,12 @@ export const fetchSlides = async (): Promise<Slide[]> => {
       .select('*')
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
-    if (!error && data?.length) return data.map(mapFromDb);
-    if (error) console.error('Error fetching slides:', error);
+    if (!error) {
+      const slides = (data ?? []).map(mapFromDb);
+      saveLocalSlides(slides);
+      return slides;
+    }
+    console.error('Error fetching slides from Supabase; using cached slides:', error);
   }
   return getLocalSlides();
 };

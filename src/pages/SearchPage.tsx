@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import Footer from '../components/Footer';
 import SearchBar from '../components/SearchBar';
-import ProductCard from '../components/ProductCard';
+import ProductDiscovery from '../components/ProductDiscovery';
 import Loading from '../components/Loading';
 import { fetchProducts } from '../lib/products';
+import { useShop } from '../context/ShopContext';
 import type { Product } from '../types';
 import usePageMetadata from '../hooks/usePageMetadata';
 
@@ -14,7 +15,8 @@ const SearchPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const query = searchParams.get('q') || '';
+  const { searchQuery, setSearchQuery } = useShop();
+  const query = searchParams.get('q') ?? searchQuery;
   usePageMetadata(
     query.trim() ? `Search results for ${query.trim()} | Uphar The Gift Shop` : 'Search Gifts | Uphar The Gift Shop',
     query.trim()
@@ -36,18 +38,9 @@ const SearchPage = () => {
     load();
   }, []);
 
-  const filtered = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    if (!term) return [];
-    return products.filter((product) =>
-      product.name.toLowerCase().includes(term) ||
-      product.description.toLowerCase().includes(term) ||
-      product.tags?.some((tag) => tag.toLowerCase().includes(term))
-    );
-  }, [products, query]);
-
   const handleSearchChange = (value: string) => {
-    navigate(`/search?q=${encodeURIComponent(value)}`);
+    setSearchQuery(value);
+    navigate(value ? `/search?q=${encodeURIComponent(value)}` : '/search', { replace: true });
   };
 
   if (loading) {
@@ -83,17 +76,8 @@ const SearchPage = () => {
               <p className="text-xl font-semibold text-black mb-3">Start typing to search products.</p>
               <p className="text-sm text-gray-500">Search by product name, description, or tag.</p>
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-xl font-semibold text-black mb-3">No products found.</p>
-              <p className="text-sm text-gray-500">Try another keyword or browse the full collection.</p>
-            </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-6">
-              {filtered.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            <ProductDiscovery products={products} query={query} />
           )}
         </div>
       </main>

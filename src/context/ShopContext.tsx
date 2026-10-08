@@ -31,15 +31,59 @@ const ShopContext = createContext<ShopContextValue | undefined>(undefined);
 const CART_STORAGE_KEY = 'uphar_cart';
 const WISHLIST_STORAGE_KEY = 'uphar_wishlist';
 
+const loadCart = (): CartItem[] => {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const storedCart = window.localStorage.getItem(CART_STORAGE_KEY);
+    if (!storedCart) return [];
+
+    const parsed: unknown = JSON.parse(storedCart);
+    if (!Array.isArray(parsed)) {
+      throw new Error('Stored cart must be an array');
+    }
+
+    return parsed.filter(
+      (item): item is CartItem =>
+        typeof item?.productId === 'string' &&
+        item.productId.length > 0 &&
+        typeof item.quantity === 'number' &&
+        Number.isFinite(item.quantity) &&
+        item.quantity > 0
+    );
+  } catch (error) {
+    console.error('Unable to read saved cart:', error);
+    return [];
+  }
+};
+
+const loadWishlist = (): string[] => {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const storedWishlist = window.localStorage.getItem(WISHLIST_STORAGE_KEY);
+    if (!storedWishlist) return [];
+
+    const parsed: unknown = JSON.parse(storedWishlist);
+    if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === 'string')) {
+      throw new Error('Stored wishlist must be an array of product IDs');
+    }
+    return parsed;
+  } catch (error) {
+    console.error('Unable to read saved wishlist:', error);
+    return [];
+  }
+};
+
 type CartToast = {
   id: number;
   message: string;
 };
 
 export const ShopProvider = ({ children }: { children: ReactNode }) => {
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(loadCart);
   const cartRef = useRef(cart);
-  const [wishlist, setWishlist] = useState<string[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>(loadWishlist);
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>(DEFAULT_FEATURE_FLAGS);
   const [searchQuery, setSearchQuery] = useState('');
   const [cartToast, setCartToast] = useState<CartToast | null>(null);
@@ -58,28 +102,19 @@ export const ShopProvider = ({ children }: { children: ReactNode }) => {
   }, [cartToast]);
 
   useEffect(() => {
-    const storedCart = localStorage.getItem(CART_STORAGE_KEY);
-    if (storedCart) {
-      try {
-        const parsedCart = JSON.parse(storedCart) as CartItem[];
-        cartRef.current = parsedCart;
-        setCart(parsedCart);
-      } catch {
-        cartRef.current = [];
-        setCart([]);
-      }
-    }
-
-    const storedWishlist = localStorage.getItem(WISHLIST_STORAGE_KEY);
-    if (storedWishlist) {
-      try {
-        setWishlist(JSON.parse(storedWishlist));
-      } catch {
-        setWishlist([]);
-      }
-    }
-
     setFeatureFlags(loadFeatureFlags());
+  }, []);
+
+  useEffect(() => {
+    const syncCartFromStorage = (event: StorageEvent) => {
+      if (event.key !== CART_STORAGE_KEY && event.key !== null) return;
+      const nextCart = event.newValue ? loadCart() : [];
+      cartRef.current = nextCart;
+      setCart(nextCart);
+    };
+
+    window.addEventListener('storage', syncCartFromStorage);
+    return () => window.removeEventListener('storage', syncCartFromStorage);
   }, []);
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import type { Product } from '../types';
 import { useShop } from '../context/ShopContext';
 import { ShoppingCart, Trash2 } from 'lucide-react';
+import ProductStockStatus from './ProductStockStatus';
 
 interface ProductCardProps {
   product: Product;
@@ -10,7 +11,7 @@ interface ProductCardProps {
 const ProductCard = ({ product }: ProductCardProps) => {
   const { addToCart, cart, removeFromCart } = useShop();
   const cartQuantity = cart.find((item) => item.productId === product.id)?.quantity ?? 0;
-  const isSoldOut = (product.quantity ?? 0) <= 0;
+  const isSoldOut = product.quantity !== undefined && product.quantity <= 0;
 
   return (
     <div className="product-card flex h-full flex-col bg-white rounded-xl sm:rounded-2xl md:rounded-3xl overflow-hidden shadow-md hover:shadow-2xl hover:-translate-y-1 md:hover:-translate-y-2 transition-all duration-300 border-2 border-transparent">
@@ -22,8 +23,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
             loading="lazy"
             className="w-full h-full object-cover transition-transform duration-500 hover:scale-105 md:hover:scale-110"
           />
-          {/* Safe Check for optional item quantities prevents error TS18048 */}
-          {product.quantity !== undefined && product.quantity <= 0 && (
+          {isSoldOut && (
             <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
               <span className="bg-red-600 text-white font-bold text-[10px] sm:text-xs tracking-wider uppercase py-1 px-2.5 rounded-md">
                 Sold Out
@@ -41,6 +41,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
         <p className="min-h-[3.25em] text-[10px] sm:text-xs md:text-sm lg:text-base text-gray-500 line-clamp-2 leading-relaxed">
           {product.description}
         </p>
+        <ProductStockStatus quantity={product.quantity} className="mt-2" />
 
         <div className="mt-auto flex items-center justify-between gap-3 pt-4">
           <span className="text-sm sm:text-base font-semibold text-[var(--charcoal)]">

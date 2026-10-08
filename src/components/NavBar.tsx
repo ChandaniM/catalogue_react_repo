@@ -1,7 +1,8 @@
 import { Search, ShoppingBag, ChevronDown, X, Menu } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
 import { useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 import { fetchCategories } from '../services/categories';
 import type { Category } from '../types';
 
@@ -17,6 +18,8 @@ const NavBar: React.FC = () => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isSearchPage = location.pathname === '/search';
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -46,6 +49,15 @@ const NavBar: React.FC = () => {
     closeDrawer();
   };
 
+  const navigateToSearch = () => {
+    navigate(searchQuery.trim() ? `/search?q=${encodeURIComponent(searchQuery.trim())}` : '/search');
+  };
+
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    navigateToSearch();
+  };
+
   return (
     <div className="relative w-full bg-white border-b border-gray-200">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
@@ -73,7 +85,7 @@ const NavBar: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-            <div className="hidden lg:flex items-center gap-2 w-[340px] rounded-full border border-[#e7e2dc] bg-[#f5f3f1] px-4 py-2.5">
+            {!isSearchPage && <form onSubmit={handleSearchSubmit} className="hidden lg:flex items-center gap-2 w-[340px] rounded-full border border-[#e7e2dc] bg-[#f5f3f1] px-4 py-2.5">
               <Search size={16} className="text-gray-500" />
               <input
                 type="text"
@@ -82,16 +94,23 @@ const NavBar: React.FC = () => {
                 placeholder="Search for products, brands and more"
                 className="w-full bg-transparent text-sm text-black outline-none placeholder:text-gray-400"
               />
-            </div>
+              <button
+                type="submit"
+                aria-label="Submit product search"
+                className="shrink-0 text-gray-600 hover:text-black"
+              >
+                <Search size={16} />
+              </button>
+            </form>}
 
-            <button
+            {!isSearchPage && <button
               type="button"
-              onClick={() => navigate('/search')}
+              onClick={() => navigate(searchQuery.trim() ? `/search?q=${encodeURIComponent(searchQuery.trim())}` : '/search')}
               aria-label="Search products"
               className="lg:hidden p-2 text-black"
             >
               <Search size={18} />
-            </button>
+            </button>}
 
             <Link to="/cart" className="relative inline-flex items-center justify-center p-2 text-black">
               <ShoppingBag size={18} />

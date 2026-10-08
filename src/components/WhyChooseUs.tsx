@@ -1,8 +1,11 @@
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faGift, faPen, faStar, faTruck } from '@fortawesome/free-solid-svg-icons';
+
 const features = [
-  { key: 'curated', title: 'Thoughtfully Curated', desc: 'Handpicked gifts for every occasion', icon: '🎁' },
-  { key: 'quality', title: 'Premium Quality', desc: 'Only the best for your loved ones', icon: '⭐' },
-  { key: 'personal', title: 'Personalised for You', desc: 'Add your personal touch to every gift', icon: '✍️' },
-  { key: 'delivery', title: 'Reliable Delivery', desc: 'On-time delivery, every single time', icon: '🚚' },
+  { key: 'curated', title: 'Thoughtfully Curated', desc: 'Handpicked gifts for every occasion', icon: faGift },
+  { key: 'quality', title: 'Premium Quality', desc: 'Only the best for your loved ones', icon: faStar },
+  { key: 'personal', title: 'Personalised for You', desc: 'Add your personal touch to every gift', icon: faPen },
+  { key: 'delivery', title: 'Reliable Delivery', desc: 'On-time delivery, every single time', icon: faTruck },
 ];
 
 const WhyChooseUs: React.FC = () => {
@@ -12,7 +15,9 @@ const WhyChooseUs: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {features.map((f) => (
             <div key={f.key} className="flex gap-4 items-start bg-white rounded-xl border border-gray-100 p-4">
-              <div className="h-12 w-12 rounded-full bg-[rgba(250,244,238,0.9)] flex items-center justify-center text-xl">{f.icon}</div>
+              <div className="h-12 w-12 rounded-full bg-[rgba(250,244,238,0.9)] flex items-center justify-center text-xl">
+                <FontAwesomeIcon icon={f.icon} aria-hidden="true" />
+              </div>
               <div>
                 <h4 className="text-sm font-semibold text-black">{f.title}</h4>
                 <p className="text-xs text-gray-600">{f.desc}</p>

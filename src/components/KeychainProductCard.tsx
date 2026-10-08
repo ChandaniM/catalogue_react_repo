@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ShoppingCart, Heart, Trash2 } from 'lucide-react';
 import type { Product } from '../types';
 import { useShop } from '../context/ShopContext';
+import ProductStockStatus from './ProductStockStatus';
 
 interface Props {
   product: Product;
@@ -11,7 +12,7 @@ const KeychainProductCard = ({ product }: Props) => {
   const { addToCart, cart, removeFromCart, wishlist, toggleWishlist } = useShop();
   const cartQuantity = cart.find((item) => item.productId === product.id)?.quantity ?? 0;
   const inWishlist = wishlist.includes(product.id);
-  const isSoldOut = (product.quantity ?? 0) <= 0;
+  const isSoldOut = product.quantity !== undefined && product.quantity <= 0;
 
   return (
     <div className="flex h-full flex-col bg-white rounded-lg border border-[#efe7df] overflow-hidden">
@@ -39,7 +40,10 @@ const KeychainProductCard = ({ product }: Props) => {
         </div>
 
         <div className="mt-auto flex items-center justify-between pt-4">
-           <div className="text-lg font-semibold text-[#1f1f1f]">₹{product.sellingPrice}</div>
+           <div>
+             <div className="text-lg font-semibold text-[#1f1f1f]">₹{product.sellingPrice}</div>
+             <ProductStockStatus quantity={product.quantity} className="mt-2" />
+           </div>
            <button
              onClick={() => cartQuantity > 0 ? removeFromCart(product.id) : addToCart(product.id)}
              disabled={isSoldOut && cartQuantity === 0}

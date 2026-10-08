@@ -4,14 +4,14 @@ import { isSupabaseConfigured, supabase } from '../lib/supabase';
 const OCCASIONS_STORAGE_KEY = 'uphar_occasions';
 
 export const DUMMY_OCCASIONS: Occasion[] = [
-  { key: 'birthday', label: 'Birthday', icon: '🎂' },
-  { key: 'anniversary', label: 'Anniversary', icon: '💑' },
-  { key: 'wedding', label: 'Wedding', icon: '💍' },
-  { key: 'corporate', label: 'Corporate', icon: '🏢' },
-  { key: 'festive', label: 'Festive', icon: '🪔' },
-  { key: 'new-baby', label: 'New Baby', icon: '🍼' },
-  { key: 'thank-you', label: 'Thank You', icon: '🙏' },
-  { key: 'just-because', label: 'Just Because', icon: '🎁' },
+  { key: 'birthday', label: 'Birthday', icon: 'cake' },
+  { key: 'anniversary', label: 'Anniversary', icon: 'heart' },
+  { key: 'wedding', label: 'Wedding', icon: 'ring' },
+  { key: 'corporate', label: 'Corporate', icon: 'briefcase' },
+  { key: 'festive', label: 'Festive', icon: 'star' },
+  { key: 'new-baby', label: 'New Baby', icon: 'baby' },
+  { key: 'thank-you', label: 'Thank You', icon: 'heart' },
+  { key: 'just-because', label: 'Just Because', icon: 'gift' },
 ];
 
 export const getStoredOccasions = (): Occasion[] => {

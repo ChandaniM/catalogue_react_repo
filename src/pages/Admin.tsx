@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faInstagram, faWhatsapp } from '@fortawesome/free-brands-svg-icons';
 import { faGift, faHeart, faCakeCandles, faRing, faBaby, faBriefcase, faStar, faEnvelope } from '@fortawesome/free-solid-svg-icons';
@@ -95,7 +96,7 @@ const Admin = () => {
   const [occasionName, setOccasionName] = useState('');
   const [occasionKey, setOccasionKey] = useState('');
   const [occasionIcon, setOccasionIcon] = useState('');
-  const [occasionIconMode, setOccasionIconMode] = useState<'emoji' | 'upload' | 'fontawesome'>('emoji');
+  const [occasionIconMode, setOccasionIconMode] = useState<'upload' | 'fontawesome'>('fontawesome');
 
   // Delete confirm modal
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'product' | 'category' | 'tag' | 'occasion' | 'slide' | 'sale'; id: string; name: string } | null>(null);
@@ -597,7 +598,7 @@ const Admin = () => {
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
 
-  const iconNameMap: Record<string, any> = {
+  const iconNameMap: Record<string, IconDefinition> = {
     whatsapp: faWhatsapp,
     instagram: faInstagram,
     gift: faGift,
@@ -612,30 +613,31 @@ const Admin = () => {
     email: faEnvelope,
   };
 
-  const normalizeOccasionIcon = (value: string) => value.trim();
+  const normalizeOccasionIcon = (value: string) => {
+    const normalized = value.trim();
+    if (!normalized || normalized.startsWith('http') || normalized.startsWith('data:image')) {
+      return normalized;
+    }
+    const key = normalized.toLowerCase().replace(/^fa-/, '').replace('fa-brands ', '').replace('fa-solid ', '').replace(/[^a-z0-9]/g, '');
+    return iconNameMap[key] ? key : 'gift';
+  };
 
   const renderOccasionIconPreview = (iconValue: string, sizeClass = 'text-xl') => {
     const normalized = normalizeOccasionIcon(iconValue);
-    if (!normalized) return <span className="text-gray-400">🎁</span>;
+    if (!normalized) return <FontAwesomeIcon icon={faGift} className={`${sizeClass} text-gray-400`} />;
     if (normalized.startsWith('http') || normalized.startsWith('data:image')) {
       return <img src={normalized} alt="occasion icon" className="h-7 w-7 object-cover rounded-md" />;
     }
     const key = normalized.toLowerCase().replace(/^fa-/, '').replace('fa-brands ', '').replace('fa-solid ', '').replace(/[^a-z0-9]/g, '');
     const icon = iconNameMap[key] || iconNameMap.gift;
-    if (normalized.includes('fa-') || iconNameMap[key]) {
-      return <FontAwesomeIcon icon={icon} className={sizeClass} />;
-    }
-    if (/^[\p{Extended_Pictographic}]$/u.test(normalized) || normalized.length <= 2) {
-      return <span className={sizeClass}>{normalized}</span>;
-    }
-    return <FontAwesomeIcon icon={faGift} className={sizeClass} />;
+    return <FontAwesomeIcon icon={icon} className={sizeClass} />;
   };
 
   const openAddOccasion = () => {
     setOccasionName('');
     setOccasionKey('');
     setOccasionIcon('');
-    setOccasionIconMode('emoji');
+    setOccasionIconMode('fontawesome');
     setShowOccasionModal(true);
     setActiveView('occasions');
   };
@@ -673,7 +675,7 @@ const Admin = () => {
     setOccasionName('');
     setOccasionKey('');
     setOccasionIcon('');
-    setOccasionIconMode('emoji');
+    setOccasionIconMode('fontawesome');
   };
 
   const handleDeleteOccasion = (key: string) => {
@@ -1110,19 +1112,13 @@ const Admin = () => {
                       <div className="w-12 h-12 rounded-lg bg-[#f5f1eb] flex items-center justify-center border border-[#e8e0d8] text-lg">
                         {(() => {
                           const normalized = occasion.icon?.trim() || '';
-                          if (!normalized) return <span className="text-gray-400">🎁</span>;
+                          if (!normalized) return <FontAwesomeIcon icon={faGift} className="text-gray-400" />;
                           if (normalized.startsWith('http') || normalized.startsWith('data:image')) {
                             return <img src={normalized} alt={`${occasion.label} icon`} className="max-w-full max-h-full rounded" />;
                           }
                           const key = normalized.toLowerCase().replace(/^fa-/, '').replace('fa-brands ', '').replace('fa-solid ', '').replace(/[^a-z0-9]/g, '');
                           const mappedIcon = iconNameMap[key] || faGift;
-                          if (normalized.includes('fa-') || iconNameMap[key]) {
-                            return <FontAwesomeIcon icon={mappedIcon} className="text-lg" />;
-                          }
-                          if (/^[\p{Extended_Pictographic}]$/u.test(normalized) || normalized.length <= 2) {
-                            return <span className="text-2xl">{normalized}</span>;
-                          }
-                          return <FontAwesomeIcon icon={faGift} className="text-lg" />;
+                          return <FontAwesomeIcon icon={mappedIcon} className="text-lg" />;
                         })()}
                       </div>
                       <div>
@@ -1751,38 +1747,23 @@ const Admin = () => {
               <div>
                 <label className="block text-xs text-gray-600 mb-1.5">Icon</label>
                 <div className="flex flex-wrap gap-2 mb-2">
-                  {(['emoji', 'upload', 'fontawesome'] as const).map((mode) => (
+                  {(['upload', 'fontawesome'] as const).map((mode) => (
                     <button
                       key={mode}
                       type="button"
                       onClick={() => setOccasionIconMode(mode)}
                       className={`px-2.5 py-1.5 rounded-full text-[11px] font-medium border ${occasionIconMode === mode ? 'bg-black text-white border-black' : 'bg-[#f5f1eb] text-black border-[#e8e0d8]'}`}
                     >
-                      {mode === 'emoji' ? 'Emoji' : mode === 'upload' ? 'Upload Image' : 'Font Awesome'}
+                      {mode === 'upload' ? 'Upload Image' : 'Font Awesome'}
                     </button>
                   ))}
                 </div>
-
-                {occasionIconMode === 'emoji' && (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={occasionIcon}
-                      onChange={(e) => setOccasionIcon(e.target.value)}
-                      placeholder="🎉 or 😊"
-                      className="flex-1 px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
-                    />
-                    <div className="w-12 h-12 rounded-xl bg-[#f5f1eb] flex items-center justify-center border border-[#e8e0d8]">
-                      {renderOccasionIconPreview(occasionIcon)}
-                    </div>
-                  </div>
-                )}
 
                 {occasionIconMode === 'upload' && (
                   <div className="flex items-center gap-2">
                     <input type="file" accept="image/*" onChange={handleOccasionIconFile} className="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:bg-black file:text-white" />
                     <div className="w-12 h-12 rounded-xl bg-[#f5f1eb] flex items-center justify-center border border-[#e8e0d8] overflow-hidden">
-                      {occasionIcon ? <img src={occasionIcon} alt="occasion icon preview" className="h-full w-full object-cover" /> : <span className="text-gray-400">🎁</span>}
+                      {occasionIcon ? <img src={occasionIcon} alt="occasion icon preview" className="h-full w-full object-cover" /> : <FontAwesomeIcon icon={faGift} className="text-gray-400" />}
                     </div>
                   </div>
                 )}

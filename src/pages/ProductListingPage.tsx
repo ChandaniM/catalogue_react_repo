@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import Footer from '../components/Footer';
-import ProductCard from '../components/ProductCard';
+import ProductDiscovery from '../components/ProductDiscovery';
 import Loading from '../components/Loading';
 import { fetchProducts } from '../lib/products';
 import { useShop } from '../context/ShopContext';
@@ -30,8 +30,7 @@ const ProductListingPage = ({ title, description, filter, hideIfDisabled = false
     const load = async () => {
       try {
         setLoading(true);
-        const items = await fetchProducts();
-        setProducts(items);
+        setProducts(await fetchProducts());
       } catch (error) {
         console.error('Error fetching products:', error);
       } finally {
@@ -40,11 +39,6 @@ const ProductListingPage = ({ title, description, filter, hideIfDisabled = false
     };
     load();
   }, []);
-
-  const filtered = useMemo(
-    () => products.filter((product) => filter(product, searchQuery)),
-    [products, filter, searchQuery]
-  );
 
   if (loading) {
     return (
@@ -86,19 +80,7 @@ const ProductListingPage = ({ title, description, filter, hideIfDisabled = false
             {description && <p className="text-sm sm:text-base text-gray-600 max-w-3xl">{description}</p>}
           </div>
 
-
-          {filtered.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-xl text-black font-semibold mb-3">No products found</p>
-              <p className="text-sm text-gray-500">Try another search or browse our full collection.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
-              {filtered.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
+          <ProductDiscovery products={products} query={searchQuery} filter={filter} />
         </div>
       </main>
       <Footer />

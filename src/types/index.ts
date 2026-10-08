@@ -41,7 +41,7 @@ export interface Slide {
 export interface Occasion {
   key: string;
   label: string;
-  // optional icon: either a single emoji (e.g. "🎉") or an image URL
+  // Optional Font Awesome icon key or image URL.
   icon?: string;
 }
 

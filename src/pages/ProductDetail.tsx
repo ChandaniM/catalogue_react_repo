@@ -7,9 +7,11 @@ import type { Product, Category } from '../types';
 import { fetchProductById } from '../lib/products';
 import { fetchCategories } from '../services/categories';
 import { useShop } from '../context/ShopContext';
+import type { CartItem } from '../context/ShopContext';
 import { Trash2 } from 'lucide-react';
 import { WHATSAPP_PHONE_NUMBER } from '../lib/contact';
 import usePageMetadata from '../hooks/usePageMetadata';
+import ProductStockStatus from '../components/ProductStockStatus';
 
 // Icons
 import { FaWhatsapp, FaInstagram, FaShieldAlt, FaLeaf, FaStar, FaGift, FaShoppingCart } from 'react-icons/fa';
@@ -55,20 +57,21 @@ const ProductDetail = () => {
     try {
       const storedProducts = localStorage.getItem('uphar_products');
       const storedCart = localStorage.getItem('uphar_cart');
-      const products = storedProducts ? JSON.parse(storedProducts) : [];
-      const cartItems = storedCart ? JSON.parse(storedCart) : [];
+      const products = storedProducts ? JSON.parse(storedProducts) as Product[] : [];
+      const cartItems = storedCart ? JSON.parse(storedCart) as CartItem[] : [];
 
       if (!cartItems || cartItems.length === 0) {
         return `${product?.name || ''} - ${window.location.href}`;
       }
 
-      const lines = cartItems.map((item: any) => {
-        const p = products.find((x: any) => x.id === item.productId);
+      const lines = cartItems.map((item) => {
+        const p = products.find((x) => x.id === item.productId);
         return `${p?.name || item.productId} x${item.quantity}`;
       });
 
       return `My cart from Uphar:\n${lines.join('\n')}\n\nView cart: ${window.location.origin}/cart`;
-    } catch (err) {
+    } catch (error) {
+      console.error('Unable to build cart share message:', error);
       return `${product?.name || ''} - ${window.location.href}`;
     }
   };
@@ -85,7 +88,7 @@ const ProductDetail = () => {
     if (navigator.share) {
       try {
         await navigator.share({ title: product?.name, text, url });
-      } catch (err) {
+      } catch {
         // ignore
       }
       return;
@@ -125,7 +128,7 @@ const ProductDetail = () => {
         <NavBar />
         <main className="flex-1 py-6 sm:py-8 md:py-10">
           <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 text-center py-10 sm:py-16 md:py-20">
-            <p className="text-4xl sm:text-5xl mb-3 sm:mb-4">🎁</p>
+            <FaGift className="mx-auto mb-3 text-4xl text-gray-500 sm:mb-4 sm:text-5xl" aria-hidden="true" />
             <p className="text-gray-500 mb-4 sm:mb-6 text-sm sm:text-base">Product not found</p>
             <Link to="/" className="btn btn-primary">
               <i className="fas fa-arrow-left" /> Back to Shop
@@ -183,10 +186,7 @@ const ProductDetail = () => {
               </p>
 
               <div className="mt-6">
-                <div className="flex items-center gap-3">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                  <span className="font-medium text-gray-700">{(product.quantity ?? 0) > 0 ? 'In stock' : 'Out of stock'}</span>
-                </div>
+                <ProductStockStatus quantity={product.quantity} />
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <div className="flex items-center gap-3">
@@ -238,10 +238,11 @@ const ProductDetail = () => {
                 <button
                   type="button"
                   onClick={() => cartQuantity > 0 ? removeFromCart(product.id) : addToCart(product.id)}
-                  className={`btn btn-lg w-full sm:w-auto inline-flex items-center gap-3 justify-center ${cartQuantity > 0 ? 'bg-red-700 text-white hover:bg-red-800' : 'btn-primary'}`}
+                  disabled={product.quantity !== undefined && product.quantity <= 0 && cartQuantity === 0}
+                  className={`btn btn-lg w-full sm:w-auto inline-flex items-center gap-3 justify-center disabled:cursor-not-allowed disabled:opacity-60 ${cartQuantity > 0 ? 'bg-red-700 text-white hover:bg-red-800' : 'btn-primary'}`}
                 >
                   {cartQuantity > 0 ? <Trash2 size={18} aria-hidden="true" /> : <FaShoppingCart className="text-lg" />}
-                  <span className="text-sm">{cartQuantity > 0 ? 'Remove from cart' : 'Add to cart'}</span>
+                  <span className="text-sm">{cartQuantity > 0 ? 'Remove from cart' : product.quantity !== undefined && product.quantity <= 0 ? 'Sold out' : 'Add to cart'}</span>
                 </button>
 
               </div>

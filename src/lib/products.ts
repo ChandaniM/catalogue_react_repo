@@ -5,6 +5,18 @@ import type { Product } from '../types';
 const LOCAL_STORAGE_KEY = 'uphar_products';
 const MIGRATION_KEY = 'uphar_products_migrated_v3';
 
+export const productMatchesSearch = (product: Product, query: string): boolean => {
+  const term = query.trim().toLocaleLowerCase();
+  if (!term) return true;
+
+  return [
+    product.name,
+    product.description,
+    ...(product.tags ?? []),
+    product.occasion ?? '',
+  ].some((value) => value.toLocaleLowerCase().includes(term));
+};
+
 const applyProductDefaults = (product: Partial<Product>): Product => ({
   id: product.id || String(Date.now()),
   name: product.name || '',
@@ -74,6 +86,15 @@ const saveLocalProducts = (products: Product[]) => {
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(products));
 };
 
+const cacheProducts = (products: Product[]) => {
+  try {
+    saveLocalProducts(products);
+    localStorage.setItem(MIGRATION_KEY, 'true');
+  } catch (error) {
+    console.error('Unable to cache products from Supabase:', error);
+  }
+};
+
 export const isProductNewArrival = (product: Product, autoDays = 7): boolean => {
   if (product.isNewArrival) return true;
   if (!product.createdAt) return false;
@@ -95,7 +116,9 @@ export const fetchProducts = async (): Promise<Product[]> => {
       return getLocalProducts();
     }
 
-    return data.map(mapFromDb);
+    const products = data.map(mapFromDb);
+    cacheProducts(products);
+    return products;
   }
 
   return getLocalProducts();
@@ -114,7 +137,13 @@ export const fetchProductById = async (id: string): Promise<Product | null> => {
       return null;
     }
 
-    return mapFromDb(data);
+    const product = mapFromDb(data);
+    const cachedProducts = getLocalProducts();
+    cacheProducts([
+      ...cachedProducts.filter((cachedProduct) => cachedProduct.id !== product.id),
+      product,
+    ]);
+    return product;
   }
 
   return getLocalProducts().find((p) => p.id === id) || null;

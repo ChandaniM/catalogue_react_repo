@@ -1,45 +1,6 @@
-// import { Link } from 'react-router-dom';
-// import promoImage from '../assets/02.png';
-
-// const PromoBanner: React.FC = () => {
-//   return (
-//     <section className="w-full mt-10">
-//       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-//         <div className="overflow-hidden rounded-[16px] border border-[#ede4dc] bg-[#f5efe9] p-4 sm:p-5">
-//           <div className="grid items-center gap-5 md:grid-cols-[0.7fr_1.4fr]">
-//             <div className="h-[150px] sm:h-[180px] overflow-hidden rounded-[14px] bg-white">
-//               <img src={promoImage} alt="Gift hamper" className="h-full w-full object-cover" />
-//             </div>
-
-//             <div className="flex flex-col gap-3">
-//               <p className="text-[0.68rem] uppercase tracking-[0.28em] text-gray-500">Plan ahead</p>
-//               <h3 className="text-xl sm:text-2xl font-semibold text-black">Planning a special celebration?</h3>
-//               <p className="text-sm text-gray-600 max-w-xl">Pre-order your gifts and we'll have them ready when you need them.</p>
-
-//               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-//                 <Link to="/pre-orders" className="inline-flex items-center justify-center rounded-full bg-black px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-white">
-//                   Pre-order now →
-//                 </Link>
-
-//                 <div className="flex flex-wrap items-center gap-3 text-xs text-gray-700">
-//                   <span className="inline-flex items-center gap-2"><span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white border border-gray-200">🎁</span> Choose your gift</span>
-//                   <span className="inline-flex items-center gap-2"><span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white border border-gray-200">📅</span> Select date</span>
-//                   <span className="inline-flex items-center gap-2"><span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white border border-gray-200">💝</span> We'll take care</span>
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </section>
-//   );
-// };
-
-// export default PromoBanner;
-
-
 import { Link } from 'react-router-dom';
 import promoImage from '../assets/filer image.png';
+import { CalendarDays, Gift, Heart } from 'lucide-react';
 
 const PromoBanner: React.FC = () => {
   return (
@@ -89,8 +50,8 @@ const PromoBanner: React.FC = () => {
               <div className="space-y-3">
 
                 <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ded4cb] bg-white text-sm">
-                    🎁
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ded4cb] bg-white">
+                    <Gift size={16} aria-hidden="true" />
                   </span>
                   <div>
                     <p className="text-[11px] font-semibold text-gray-800">
@@ -103,8 +64,8 @@ const PromoBanner: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ded4cb] bg-white text-sm">
-                    📅
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ded4cb] bg-white">
+                    <CalendarDays size={16} aria-hidden="true" />
                   </span>
                   <div>
                     <p className="text-[11px] font-semibold text-gray-800">
@@ -117,8 +78,8 @@ const PromoBanner: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ded4cb] bg-white text-sm">
-                    💝
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ded4cb] bg-white">
+                    <Heart size={16} aria-hidden="true" />
                   </span>
                   <div>
                     <p className="text-[11px] font-semibold text-gray-800">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faInstagram, faWhatsapp } from '@fortawesome/free-brands-svg-icons';
 import { faGift, faHeart, faCakeCandles, faRing, faBaby, faBriefcase, faStar, faEnvelope } from '@fortawesome/free-solid-svg-icons';
@@ -10,7 +11,7 @@ import { fetchOccasions } from '../services/occasions';
 import type { Occasion } from '../types';
 import usePageMetadata from '../hooks/usePageMetadata';
 
-const iconNameMap: Record<string, any> = {
+const iconNameMap: Record<string, IconDefinition> = {
   whatsapp: faWhatsapp,
   instagram: faInstagram,
   gift: faGift,
@@ -27,19 +28,12 @@ const iconNameMap: Record<string, any> = {
 
 const renderOccasionIcon = (icon?: string, altLabel?: string) => {
   const normalized = (icon || '').trim();
-  if (!normalized) return <span className="text-xl text-gray-700">🎉</span>;
   if (normalized.startsWith('http') || normalized.startsWith('data:image')) {
     return <img src={normalized} alt={altLabel || 'occasion icon'} className="h-10 w-10 object-cover rounded-full" />;
   }
   const key = normalized.toLowerCase().replace(/^fa-/, '').replace('fa-brands ', '').replace('fa-solid ', '').replace(/[^a-z0-9]/g, '');
   const mappedIcon = iconNameMap[key] || faGift;
-  if (normalized.includes('fa-') || iconNameMap[key]) {
-    return <FontAwesomeIcon icon={mappedIcon} className="text-xl text-gray-700" />;
-  }
-  if (/^[\p{Extended_Pictographic}]$/u.test(normalized) || normalized.length <= 2) {
-    return <span className="text-2xl">{normalized}</span>;
-  }
-  return <FontAwesomeIcon icon={faGift} className="text-xl text-gray-700" />;
+  return <FontAwesomeIcon icon={mappedIcon} className="text-xl text-gray-700" />;
 };
 
 const OccasionsPage: React.FC = () => {

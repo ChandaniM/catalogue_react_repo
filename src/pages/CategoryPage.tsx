@@ -10,6 +10,7 @@ import { fetchCategoryBySlug } from '../services/categories';
 import KeychainProductCard from '../components/KeychainProductCard';
 import ProductCard from '../components/ProductCard';
 import usePageMetadata from '../hooks/usePageMetadata';
+import { FolderOpen, Gift } from 'lucide-react';
 
 const CategoryPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -126,7 +127,7 @@ const CategoryPage = () => {
         <NavBar />
         <main className="flex-1 py-10">
           <div className="max-w-7xl mx-auto px-4 text-center py-16">
-            <p className="text-4xl mb-4">📁</p>
+            <FolderOpen className="mx-auto mb-4 h-10 w-10 text-gray-500" aria-hidden="true" />
             <p className="text-gray-500 mb-6">Category not found</p>
             <Link to="/" className="btn btn-primary">
               Back to Categories
@@ -164,7 +165,12 @@ const CategoryPage = () => {
               <div className="flex items-center gap-3">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#e8e0d8] bg-[#fffdfb] px-3 py-2">
                   <label className="text-sm text-gray-600 mr-2">Sort by:</label>
-                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="bg-transparent text-sm outline-none">
+                  <select value={sortBy} onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === 'popular' || value === 'featured' || value === 'price-asc' || value === 'price-desc') {
+                      setSortBy(value);
+                    }
+                  }} className="bg-transparent text-sm outline-none">
                     <option value="popular">Popular</option>
                     <option value="featured">Featured</option>
                     <option value="price-asc">Price: Low to High</option>
@@ -179,7 +185,7 @@ const CategoryPage = () => {
             <>
               {categoryProducts.length === 0 ? (
                 <div className="py-20 flex flex-col items-center justify-center">
-                  <p className="text-6xl mb-6 opacity-60">🎁</p>
+                  <Gift className="mb-6 h-14 w-14 text-gray-400" aria-hidden="true" />
                   <h3 className="text-xl font-semibold text-gray-800 mb-2">No products in this category yet.</h3>
                   <p className="text-gray-500 mb-6">We're updating this collection. Meanwhile, explore other categories or contact us for requests.</p>
                   <div className="flex gap-3">
@@ -222,7 +228,7 @@ const CategoryPage = () => {
             <>
               {categoryProducts.length === 0 ? (
                 <div className="py-20 flex flex-col items-center justify-center">
-                  <p className="text-6xl mb-6 opacity-60">🎁</p>
+                  <Gift className="mb-6 h-14 w-14 text-gray-400" aria-hidden="true" />
                   <h3 className="text-xl font-semibold text-gray-800 mb-2">No products in this category yet.</h3>
                   <p className="text-gray-500 mb-6">We're updating this collection. Meanwhile, explore other categories or contact us for requests.</p>
                   <div className="flex gap-3">
