@@ -16,7 +16,7 @@ import Loading from '../components/Loading';
 import {
   LogIn, Store, PlusCircle, Package, Gift, Trash2, Loader2, ImagePlus,
   Pencil, X, Tag, Plus, Lightbulb, FolderPlus, Folder, LayoutGrid,
-  BarChart2, ChevronRight, AlertTriangle, Wallet,
+  BarChart2, ChevronRight, AlertTriangle, Wallet, Eye, EyeOff,
 } from 'lucide-react';
 
 type ActiveView = 'products' | 'categories' | 'tags' | 'occasions' | 'sales' | 'analytics' | 'slides';
@@ -25,6 +25,7 @@ const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -845,7 +846,26 @@ const Admin = () => {
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" className="w-full px-4 py-3 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black placeholder-gray-500 text-sm focus:outline-none focus:border-black transition-colors" required />
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="w-full px-4 py-3 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black placeholder-gray-500 text-sm focus:outline-none focus:border-black transition-colors" required />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                autoComplete="current-password"
+                className="w-full px-4 py-3 pr-12 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black placeholder-gray-500 text-sm focus:outline-none focus:border-black transition-colors"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-500 hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black rounded-r-xl"
+              >
+                {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+              </button>
+            </div>
             <button type="submit" className="w-full py-3 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 mt-2">
               <LogIn size={16} /> Sign In
             </button>
