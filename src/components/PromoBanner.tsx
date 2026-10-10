@@ -11,6 +11,9 @@ const PromoBanner: React.FC = () => {
 
             {/* Gift Image - CLICKABLE */}
             <Link
+              style={{
+                paddingLeft:"1rem"
+              }}
               to="/pre-orders"
               className="block h-[150px] sm:h-[180px] md:h-[150px] overflow-hidden"
             >
