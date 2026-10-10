@@ -91,9 +91,14 @@ const Admin = () => {
   const [showTagModal, setShowTagModal] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [newTagInput, setNewTagInput] = useState('');
+  const [tagActionMessage, setTagActionMessage] = useState({ type: '', text: '' });
+  const [tagSaving, setTagSaving] = useState(false);
+  const [tagDeleting, setTagDeleting] = useState(false);
+  const [deleteTagError, setDeleteTagError] = useState('');
 
   // Occasion management
   const [showOccasionModal, setShowOccasionModal] = useState(false);
+  const [editingOccasionKey, setEditingOccasionKey] = useState<string | null>(null);
   const [occasionName, setOccasionName] = useState('');
   const [occasionKey, setOccasionKey] = useState('');
   const [occasionIcon, setOccasionIcon] = useState('');
@@ -577,18 +582,60 @@ const Admin = () => {
   // ── Tag helpers ──────────────────────────────────────────────────────────
   const handleAddTag = async () => {
     const tagName = newTagInput.trim();
-    if (!tagName || tags.includes(tagName)) return;
-    const success = await addTag(tagName);
-    if (success) { setTags([...tags, tagName]); setNewTagInput(''); }
+    if (!tagName) {
+      setTagActionMessage({ type: 'error', text: 'Enter a tag name.' });
+      return;
+    }
+    if (tags.some((tag) => tag.toLocaleLowerCase() === tagName.toLocaleLowerCase())) {
+      setTagActionMessage({ type: 'error', text: 'A tag with this name already exists.' });
+      return;
+    }
+
+    setTagSaving(true);
+    setTagActionMessage({ type: '', text: '' });
+    try {
+      const success = await addTag(tagName);
+      if (!success) {
+        setTagActionMessage({ type: 'error', text: 'The tag could not be saved. Please try again.' });
+        return;
+      }
+      setTags((currentTags) => [...currentTags, tagName]);
+      setNewTagInput('');
+      setTagActionMessage({ type: 'success', text: `Tag "${tagName}" added.` });
+    } catch (error) {
+      console.error('Failed to add tag:', error);
+      setTagActionMessage({ type: 'error', text: 'The tag could not be saved. Please try again.' });
+    } finally {
+      setTagSaving(false);
+    }
   };
 
   const handleDeleteTag = async (tagName: string) => {
-    const success = await deleteTag(tagName);
-    if (success) {
-      setTags(tags.filter((t) => t !== tagName));
-      setProductTags(productTags.filter((t) => t !== tagName));
+    setTagDeleting(true);
+    setDeleteTagError('');
+    try {
+      const success = await deleteTag(tagName);
+      if (!success) {
+        setDeleteTagError('The tag could not be deleted. Please try again.');
+        return;
+      }
+      setTags((currentTags) => currentTags.filter((tag) => tag !== tagName));
+      setProductTags((currentTags) => currentTags.filter((tag) => tag !== tagName));
+      setDeleteConfirm(null);
+      setTagActionMessage({ type: 'success', text: `Tag "${tagName}" deleted.` });
+    } catch (error) {
+      console.error('Failed to delete tag:', error);
+      setDeleteTagError('The tag could not be deleted. Please try again.');
+    } finally {
+      setTagDeleting(false);
     }
-    setDeleteConfirm(null);
+  };
+
+  const openTagManager = () => {
+    setNewTagInput('');
+    setTagActionMessage({ type: '', text: '' });
+    setDeleteTagError('');
+    setShowTagModal(true);
   };
 
   // ── Occasion helpers ─────────────────────────────────────────────────────
@@ -635,12 +682,24 @@ const Admin = () => {
   };
 
   const openAddOccasion = () => {
+    setEditingOccasionKey(null);
     setOccasionName('');
     setOccasionKey('');
     setOccasionIcon('');
     setOccasionIconMode('fontawesome');
+    setMessage({ type: '', text: '' });
     setShowOccasionModal(true);
     setActiveView('occasions');
+  };
+
+  const openEditOccasion = (occasion: Occasion) => {
+    setEditingOccasionKey(occasion.key);
+    setOccasionName(occasion.label);
+    setOccasionKey(occasion.key);
+    setOccasionIcon(occasion.icon || '');
+    setOccasionIconMode(occasion.icon?.startsWith('http') || occasion.icon?.startsWith('data:image') ? 'upload' : 'fontawesome');
+    setMessage({ type: '', text: '' });
+    setShowOccasionModal(true);
   };
 
   const handleOccasionIconFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -654,7 +713,7 @@ const Admin = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleAddOccasion = () => {
+  const handleSaveOccasion = () => {
     const label = occasionName.trim();
     if (!label) {
       setMessage({ type: 'error', text: 'Please enter an occasion name.' });
@@ -662,17 +721,21 @@ const Admin = () => {
     }
 
     const key = (occasionKey.trim() || createOccasionSlug(label)).toLowerCase();
-    if (occasions.some((item) => item.key === key)) {
+    if (occasions.some((item) => item.key === key && item.key !== editingOccasionKey)) {
       setMessage({ type: 'error', text: 'This occasion already exists.' });
       return;
     }
 
     const iconValue = occasionIconMode === 'upload' && !occasionIcon ? '' : normalizeOccasionIcon(occasionIcon);
-    const nextOccasions = [...occasions, { key, label, icon: iconValue || undefined }];
+    const savedOccasion = { key, label, icon: iconValue || undefined };
+    const nextOccasions = editingOccasionKey
+      ? occasions.map((item) => item.key === editingOccasionKey ? savedOccasion : item)
+      : [...occasions, savedOccasion];
     setOccasions(nextOccasions);
     saveOccasions(nextOccasions);
-    setMessage({ type: 'success', text: 'Occasion added to storefront.' });
+    setMessage({ type: 'success', text: editingOccasionKey ? 'Occasion updated.' : 'Occasion added to storefront.' });
     setShowOccasionModal(false);
+    setEditingOccasionKey(null);
     setOccasionName('');
     setOccasionKey('');
     setOccasionIcon('');
@@ -1075,29 +1138,42 @@ const Admin = () => {
               <h2 className="text-2xl font-semibold">Tags</h2>
             </div>
             <div className="bg-white rounded-2xl border border-gray-200 p-6 max-w-lg shadow-sm">
-              <div className="flex gap-2 mb-6">
+              <div className="flex gap-2 mb-3">
                 <input
                   type="text"
                   value={newTagInput}
                   onChange={(e) => setNewTagInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleAddTag();
+                    }
+                  }}
+                  aria-label="Tag name"
                   placeholder="e.g., Anime, Metal, Custom..."
                   className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:border-red-600 transition-colors"
                 />
-                <button onClick={handleAddTag} className="px-4 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-1.5">
-                  <Plus size={15} /> Add
+                <button type="button" onClick={() => void handleAddTag()} disabled={tagSaving} className="px-4 py-2.5 bg-black hover:bg-gray-800 disabled:opacity-60 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-1.5">
+                  {tagSaving ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} {tagSaving ? 'Saving' : 'Add'}
                 </button>
               </div>
+              {tagActionMessage.text && (
+                <p role="status" className={`mb-4 text-sm ${tagActionMessage.type === 'success' ? 'text-emerald-700' : 'text-red-700'}`}>
+                  {tagActionMessage.text}
+                </p>
+              )}
               <div className="space-y-2">
                 {tags.length === 0 && <p className="text-gray-500 text-sm text-center py-6">No tags yet.</p>}
                 {tags.map((t) => (
-                  <div key={t} className="flex justify-between items-center px-4 py-2.5 bg-gray-50 rounded-xl group border border-gray-100">
+                  <div key={t} className="flex justify-between items-center px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-100">
                     <span className="text-sm">{t}</span>
                     <button
+                      type="button"
                       onClick={() => setDeleteConfirm({ type: 'tag', id: t, name: t })}
-                      className="text-gray-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                      aria-label={`Delete ${t}`}
+                      className="p-2 -mr-2 text-gray-600 hover:text-red-600 transition-colors"
                     >
-                      <Trash2 size={14} className="text-gray-600 hover:text-red-400 transition-colors" />
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 ))}
@@ -1146,13 +1222,24 @@ const Admin = () => {
                         <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500 mt-1">/{occasion.key}</p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => setDeleteConfirm({ type: 'occasion', id: occasion.key, name: occasion.label })}
-                      className="p-2 rounded-lg bg-black/5 text-black hover:bg-black/10 transition-colors"
-                      aria-label={`Delete ${occasion.label}`}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditOccasion(occasion)}
+                        className="p-2 rounded-lg bg-black/5 text-black hover:bg-black/10 transition-colors"
+                        aria-label={`Edit ${occasion.label}`}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirm({ type: 'occasion', id: occasion.key, name: occasion.label })}
+                        className="p-2 rounded-lg bg-black/5 text-black hover:bg-black/10 transition-colors"
+                        aria-label={`Delete ${occasion.label}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
@@ -1609,7 +1696,7 @@ const Admin = () => {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs font-medium text-gray-600">Product Tags</label>
-                    <button type="button" onClick={() => setShowTagModal(true)} className="text-[10px] text-black flex items-center gap-1 hover:underline">
+                    <button type="button" onClick={openTagManager} className="text-[10px] text-black flex items-center gap-1 hover:underline">
                       <Tag size={11} /> Manage Tags
                     </button>
                   </div>
@@ -1737,9 +1824,9 @@ const Admin = () => {
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                 <Gift size={17} className="text-black" />
-                New Occasion
+                {editingOccasionKey ? 'Edit Occasion' : 'New Occasion'}
               </h3>
-              <button onClick={() => { setShowOccasionModal(false); setOccasionName(''); setOccasionKey(''); }} className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"><X size={17} /></button>
+              <button onClick={() => { setShowOccasionModal(false); setEditingOccasionKey(null); setOccasionName(''); setOccasionKey(''); setOccasionIcon(''); setMessage({ type: '', text: '' }); }} className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"><X size={17} /></button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div>
@@ -1807,9 +1894,9 @@ const Admin = () => {
                 <p className={`p-3 text-xs rounded-xl ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{message.text}</p>
               )}
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => { setShowOccasionModal(false); setOccasionName(''); setOccasionKey(''); }} className="flex-1 py-2.5 bg-[#f5f1eb] border border-[#e8e0d8] text-black rounded-xl text-sm hover:bg-[#efe8df] transition-colors">Cancel</button>
-                <button type="button" onClick={handleAddOccasion} className="flex-1 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-                  <Gift size={15} /> Create
+                <button type="button" onClick={() => { setShowOccasionModal(false); setEditingOccasionKey(null); setOccasionName(''); setOccasionKey(''); setOccasionIcon(''); setMessage({ type: '', text: '' }); }} className="flex-1 py-2.5 bg-[#f5f1eb] border border-[#e8e0d8] text-black rounded-xl text-sm hover:bg-[#efe8df] transition-colors">Cancel</button>
+                <button type="button" onClick={handleSaveOccasion} className="flex-1 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                  {editingOccasionKey ? <Pencil size={15} /> : <Gift size={15} />} {editingOccasionKey ? 'Save changes' : 'Create'}
                 </button>
               </div>
             </div>
@@ -1831,17 +1918,30 @@ const Admin = () => {
                   type="text"
                   value={newTagInput}
                   onChange={(e) => setNewTagInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleAddTag();
+                    }
+                  }}
+                  aria-label="Tag name"
                   placeholder="e.g., Anime, Metal..."
                   className="flex-1 px-3 py-2.5 bg-[#f9f7f5] border border-[#e8e0d8] rounded-xl text-black text-sm placeholder-gray-500 focus:outline-none focus:border-black transition-colors"
                 />
-                <button onClick={handleAddTag} className="px-3 py-2 bg-black text-white rounded-xl text-sm font-medium flex items-center gap-1 hover:bg-gray-800 transition-colors"><Plus size={15} /> Add</button>
+                <button type="button" onClick={() => void handleAddTag()} disabled={tagSaving} className="px-3 py-2 bg-black text-white rounded-xl text-sm font-medium flex items-center gap-1 hover:bg-gray-800 disabled:opacity-60 transition-colors">
+                  {tagSaving ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} {tagSaving ? 'Saving' : 'Add'}
+                </button>
               </div>
+              {tagActionMessage.text && (
+                <p role="status" className={`mb-3 text-sm ${tagActionMessage.type === 'success' ? 'text-emerald-700' : 'text-red-700'}`}>
+                  {tagActionMessage.text}
+                </p>
+              )}
               <div className="max-h-52 overflow-auto space-y-1.5">
                 {tags.map((t) => (
-                  <div key={t} className="flex justify-between items-center px-3 py-2.5 bg-[#f9f7f5] rounded-xl group border border-[#efe7df]">
+                  <div key={t} className="flex justify-between items-center px-3 py-2.5 bg-[#f9f7f5] rounded-xl border border-[#efe7df]">
                     <span className="text-sm text-black">{t}</span>
-                    <button onClick={() => setDeleteConfirm({ type: 'tag', id: t, name: t })} className="text-gray-500 hover:text-black transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={13} /></button>
+                    <button type="button" aria-label={`Delete ${t}`} onClick={() => setDeleteConfirm({ type: 'tag', id: t, name: t })} className="p-2 -mr-2 text-gray-500 hover:text-black transition-colors"><Trash2 size={13} /></button>
                   </div>
                 ))}
               </div>
@@ -1863,9 +1963,13 @@ const Admin = () => {
             <p className="text-sm text-gray-600 mb-6">
               <span className="font-medium text-gray-900">"{deleteConfirm.name}"</span> will be permanently removed.
             </p>
+            {deleteConfirm.type === 'tag' && deleteTagError && (
+              <p role="alert" className="mb-4 text-sm text-red-700">{deleteTagError}</p>
+            )}
             <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2.5 bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm hover:bg-gray-200 transition-colors">Cancel</button>
+              <button onClick={() => { setDeleteConfirm(null); setDeleteTagError(''); }} className="flex-1 py-2.5 bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm hover:bg-gray-200 transition-colors">Cancel</button>
               <button
+                disabled={deleteConfirm.type === 'tag' && tagDeleting}
                 onClick={() => {
                   if (deleteConfirm.type === 'product') handleDelete(deleteConfirm.id);
                   else if (deleteConfirm.type === 'category') handleDeleteCategory(deleteConfirm.id);
@@ -1874,9 +1978,9 @@ const Admin = () => {
                   else if (deleteConfirm.type === 'sale') handleDeleteSale(deleteConfirm.id);
                   else if (deleteConfirm.type === 'occasion') handleDeleteOccasion(deleteConfirm.id);
                 }}
-                className="flex-1 py-2.5 bg-black hover:bg-gray-800 text-white rounded-xl text-sm font-semibold transition-colors"
+                className="flex-1 py-2.5 bg-black hover:bg-gray-800 disabled:opacity-60 text-white rounded-xl text-sm font-semibold transition-colors"
               >
-                Delete
+                {deleteConfirm.type === 'tag' && tagDeleting ? 'Deleting' : 'Delete'}
               </button>
             </div>
           </div>
